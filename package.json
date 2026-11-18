@@ -9,6 +9,8 @@
     "build:scene": "node tools/build_scene.cjs",
     "package:delivery": "python tools/package_delivery.py",
     "prepare:publish": "node tools/build_scene.cjs && python tools/prepare_publish.py",
+    "prepare:web": "node tools/build_scene.cjs && python tools/prepare_publish.py --web-only",
+    "test:deployment:web": "node tests/deployment.cjs --web-only",
     "test:browser": "node tests/browser.cjs",
     "test:immersive": "node tests/immersive.cjs",
     "prebuild:win": "node tools/build_scene.cjs",

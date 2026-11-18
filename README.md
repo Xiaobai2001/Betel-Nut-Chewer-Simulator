@@ -13,6 +13,8 @@
 - 安装包：[GitHub Releases](https://github.com/Xiaobai2001/Betel-Nut-Chewer-Simulator/releases)。安装包放在 Releases，不提交到源码仓库。
 - 操作方式与快捷键：[使用说明](docs/usage.md)。
 
+当前先上线网页版：在开发电脑运行 `npm.cmd run prepare:web`，将 `成品/网页服务器部署/` 中的 `ChewSimulator-1.1.1-WebServer.zip` 上传到 Windows Server，按[仅网页版部署步骤](docs/windows-web.md)操作。这个小包不需要构建 EXE / APK，服务器无需 Node.js 或数据库。
+
 ## 目录
 
 ```text
@@ -33,6 +35,7 @@ Betel-Nut-Chewer-Simulator/
 ├── .build/                     SDK、编译结果、截图、备份；不进入 Git
 ├── node_modules/               开发依赖；不进入 Git
 └── 成品/                       自动生成；不进入 Git
+    ├── 网页服务器部署/          当前阶段：仅网页的 IIS 部署 ZIP
     ├── 本机运行/
     ├── 云服务器部署/
     │   ├── site/               IIS 唯一公开的网站根目录

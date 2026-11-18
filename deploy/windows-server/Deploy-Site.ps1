@@ -78,6 +78,7 @@ if ($OpenFirewall) {
     if (-not (Get-NetFirewallRule -Name $ruleName -ErrorAction SilentlyContinue)) { New-NetFirewallRule -Name $ruleName -DisplayName $ruleName -Direction Inbound -Action Allow -Protocol TCP -LocalPort $Port | Out-Null }
 }
 Write-Output "Deployment verified locally: http://127.0.0.1:$Port/"
-Write-Output "Downloads: http://SERVER_IP:$Port/download.html"
+Write-Output "Website: http://SERVER_IP:$Port/"
+if (Test-Path -LiteralPath (Join-Path $target 'download.html')) { Write-Output "Downloads: http://SERVER_IP:$Port/download.html" }
 Write-Output 'Allow the same TCP port in the cloud security group. Public reachability was not tested here.'
 Write-Output "Previous release retained at: $previousPath"

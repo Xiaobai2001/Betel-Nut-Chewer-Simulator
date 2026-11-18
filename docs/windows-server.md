@@ -2,6 +2,8 @@
 
 此指南用于用户自行通过 VNC 操作服务器。这里只准备部署包，不连接或修改服务器。
 
+当前只上线网页版时，使用[仅网页版部署步骤](windows-web.md)和 `ChewSimulator-1.1.1-WebServer.zip`。本文的 WindowsServer.zip 是同时提供 EXE / APK 下载的完整包。
+
 ## 上传什么
 
 将 `成品/云服务器部署/` 整个目录上传到服务器，例如 `C:\Deploy\ChewSimulator`。或者从 GitHub Releases 下载 `ChewSimulator-1.1.1-WindowsServer.zip` 并完整解压到该目录。

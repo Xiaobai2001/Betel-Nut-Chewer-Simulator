@@ -50,3 +50,5 @@
 服务器使用用户自行部署的 IIS 静态网站包。PowerShell 语法与 web.config XML 检查通过；源码 ZIP 与导出白名单逐文件一致，服务器 ZIP 与部署目录逐文件一致，安装包 SHA-256 校验通过。部署包通过本机 HTTP 服务检查了咀嚼操作和下载页全部链接，没有捕获到 JavaScript 错误。复查命令为 `node tests/deployment.cjs`，需先生成发布包并安装 Chrome。
 
 这些检查不代表已在 Windows Server IIS 上执行或已验证公网可访问。当前客户端没有 OTA。
+
+仅网页部署包：`npm.cmd run prepare:web` 可独立生成 IIS 网页包，无需 EXE / APK 编译结果。`npm.cmd run test:deployment:web` 已通过：用普通 HTTP 非 localhost 来源验证非安全上下文，测试咀嚼、WebGL 全屏、旋转、吐渣落地、点烟/吸吐烟/再次点烟、换包、退出和 390 像素布局，无页面 JavaScript 错误；发布清单哈希通过且不含 EXE / APK / ZIP。此检查使用本机测试 HTTP 服务，未在 Windows Server 上运行 IIS。
