@@ -1,38 +1,59 @@
-const Scene=require('../../utils/scene');
-const WebScene=require('../../utils/webgl-scene');
+const FlatScene=require('../../utils/flat-scene');
+const FallbackScene=require('../../utils/scene');
 const Sounds=require('../../utils/audio');
 Page({
-  data:{renderer:'webgl',wear:0,bites:0,fibers:0,pack:50,remaining:9,capacity:10,smokeRemaining:20,hasNut:true,lit:false,holding:false,used:0,sound:false,auto:false,full:false,zoom:100,sceneHeight:300,safeTop:28,packEffect:null,breathing:false,breathSeconds:60,breathPhase:'轻轻吸气',error:'',tiers:[{tier:50,name:'青椰绿',capacity:10},{tier:100,name:'秋山金',capacity:15},{tier:200,name:'夜岩黑',capacity:20}]},
+  data:{renderer:'2d',wear:0,bites:0,fibers:0,pack:50,remaining:9,capacity:10,smokeRemaining:20,hasNut:true,lit:false,holding:false,used:0,sound:false,auto:false,full:false,zoom:100,viewportHeight:640,pageWidth:375,bottomInset:0,compact:false,packEffect:null,breathing:false,breathSeconds:60,breathPhase:'轻轻吸气',error:'',tiers:[{tier:50,name:'青椰绿',capacity:10},{tier:100,name:'秋山金',capacity:15},{tier:200,name:'夜岩黑',capacity:20}]},
   onLoad(){
+    this.visible=true;this.ready=false;this.sceneGeneration=0;this.switchToken=0;
     this.client=getApp().client;this.sounds=new Sounds();this.unsubscribe=this.client.subscribe(()=>this.update());
-    const info=wx.getWindowInfo?wx.getWindowInfo():wx.getSystemInfoSync();this.windowInfo=info;
-    this.setData({safeTop:(info.statusBarHeight||24)+8,sceneHeight:Math.min(330,info.windowWidth*.82),pageWidth:info.windowWidth});this.update();
+    this.fitViewport();this.update();
   },
-  onReady(){this.setupCanvas();},
-  onShow(){if(!this.client)return;this.update();if(this.scene){this.resizeScene();this.scene.start();}this.startClock();},
-  onHide(){this.stopAuto();this.stopClock();this.stopBreathing();if(this.scene)this.scene.stop();this.sounds.stop();if(this.data.full)this.toggleFull();},
-  onUnload(){this.onHide();if(this.unsubscribe)this.unsubscribe();if(this.scene)this.scene.destroy();clearTimeout(this.packTimer);},
-  onResize(){if(wx.getWindowInfo)this.windowInfo=wx.getWindowInfo();this.resizeScene();},
+  onReady(){this.ready=true;this.setupCanvas();},
+  onShow(){if(!this.client)return;this.visible=true;this.update();this.fitViewport(()=>{if(!this.ready)return;if(this.scene){this.resizeScene();this.scene.start();}else this.setupCanvas();});this.startClock();},
+  onHide(){
+    this.visible=false;this.switchToken++;this.switching=false;this.stopAuto();this.stopClock();this.stopBreathing();this.sounds.stop();this.releaseScene();
+    if(this.data.full){this.setData({full:false,renderer:'2d',zoom:100});wx.showTabBar({animation:false});}
+  },
+  onUnload(){this.onHide();this.ready=false;if(this.unsubscribe)this.unsubscribe();clearTimeout(this.packTimer);},
+  onResize(){this.fitViewport(()=>this.resizeScene());},
+  fitViewport(done){
+    const info=wx.getWindowInfo?wx.getWindowInfo():wx.getSystemInfoSync();this.windowInfo=info;
+    const inset=info.safeArea?info.screenHeight-info.safeArea.bottom:0;
+    const bottom=this.data.full&&Number.isFinite(inset)?Math.max(0,Math.min(40,inset)):0;
+    this.setData({pageWidth:info.windowWidth,viewportHeight:info.windowHeight,bottomInset:bottom,compact:info.windowHeight<560},done);
+  },
+  canvasSelector(){return this.data.full?(this.data.renderer==='webgl'?'#immersive-canvas':'#fallback-canvas'):'#home-canvas';},
+  releaseScene(){this.sceneGeneration++;if(this.scene)this.scene.destroy();this.scene=null;},
   setupCanvas(){
-    if(this.scene){this.scene.destroy();this.scene=null;}
-    const query=wx.createSelectorQuery().in(this);query.select('#scene').fields({node:true,size:true,rect:true}).exec(result=>{
-      const item=result[0];if(!item||!item.node){this.setData({error:'画布初始化失败，请升级微信后重试。'});return;}
-      this.canvasNode=item.node;
+    if(!this.ready||!this.visible)return;
+    this.releaseScene();const generation=this.sceneGeneration,full=this.data.full,renderer=this.data.renderer;
+    const query=wx.createSelectorQuery().in(this);query.select(this.canvasSelector()).fields({node:true,size:true});
+    if(!full)query.select('#smoke-preview').fields({node:true,size:true});
+    query.exec(result=>{
+      if(generation!==this.sceneGeneration||!this.visible)return;
+      const item=result[0],smoke=result[1];
+      if(!item||!item.node||(!full&&(!smoke||!smoke.node))){this.setData({error:'画布初始化失败，请重新编译或升级微信后重试。'});return;}
       try{
-        this.scene=this.data.renderer==='webgl'?new WebScene(item.node,item.width,item.height,this.windowInfo.pixelRatio,this.client.state,{reduced:this.client.preferences.reducedMotion,onError:()=>wx.nextTick(()=>this.canvasError())}):new Scene(item.node,item.width,item.height,this.windowInfo.pixelRatio,this.client.state);
+        if(!full)this.scene=new FlatScene(item,smoke,this.client.state,this.windowInfo.pixelRatio,this.client.preferences.reducedMotion);
+        else if(renderer==='webgl'){
+          const WebScene=require('../../utils/webgl-scene');
+          this.scene=new WebScene(item.node,item.width,item.height,this.windowInfo.pixelRatio,this.client.state,{reduced:this.client.preferences.reducedMotion,onError:()=>wx.nextTick(()=>{if(generation===this.sceneGeneration)this.canvasError();})});
+        }else this.scene=new FallbackScene(item.node,item.width,item.height,this.windowInfo.pixelRatio,this.client.state);
         this.scene.reduced=this.client.preferences.reducedMotion;this.scene.start();
       }catch(error){
-        if(this.scene)this.scene.destroy();this.scene=null;
-        if(this.data.renderer==='webgl'){this.setData({renderer:'2d'});wx.nextTick(()=>this.setupCanvas());}
+        this.releaseScene();
+        if(full&&renderer==='webgl')this.canvasError();
         else this.setData({error:'场景初始化失败，请重新编译或升级微信后重试。'});
       }
     });
   },
   resizeScene(){
-    const info=this.windowInfo||{};this.setData({pageWidth:info.windowWidth,sceneHeight:this.data.full?Math.max(180,info.windowHeight-this.data.safeTop-260):Math.min(330,info.windowWidth*.82)});
-    wx.nextTick(()=>wx.createSelectorQuery().in(this).select('#scene').boundingClientRect(rect=>{if(rect&&this.scene)this.scene.resize(rect.width,rect.height);}).exec());
+    if(!this.ready||!this.visible)return;
+    const generation=this.sceneGeneration,query=wx.createSelectorQuery().in(this);
+    query.select(this.canvasSelector()).boundingClientRect();if(!this.data.full)query.select('#smoke-preview').boundingClientRect();
+    query.exec(result=>{if(generation!==this.sceneGeneration||!this.scene||!result[0])return;const [main,smoke]=result;this.scene.resize(main.width,main.height,smoke&&smoke.width,smoke&&smoke.height);});
   },
-  canvasError(){if(this.data.renderer==='webgl'){if(this.scene)this.scene.destroy();this.scene=null;this.setData({renderer:'2d'});wx.nextTick(()=>this.setupCanvas());}},
+  canvasError(){if(this.data.full&&this.data.renderer==='webgl'){this.releaseScene();this.setData({renderer:'fallback'},()=>wx.nextTick(()=>this.setupCanvas()));}},
   update(){
     const s=this.client.state,n=s.nut,c=s.cigarette;
     if(this.scene){this.scene.state=s;this.scene.reduced=this.client.preferences.reducedMotion;}
@@ -42,7 +63,7 @@ Page({
   run(type,value){try{const ok=this.client.perform(type,value);this.setData({error:''});return ok;}catch(error){this.stopAuto();this.stopClock();this.setData({error:error.message});return false;}},
   primary(){
     const s=this.client.state;
-    if(!s.nut){if(!s.remaining&&!this.openPack(s.pack))return;if(this.run('take'))this.startClock();return;}
+    if(!s.nut){if(!s.remaining&&!this.openPack(s.pack))return;if(this.run('take')){if(this.scene&&this.scene.take)this.scene.take();this.startClock();}return;}
     if(this.run('chew')){if(this.scene)this.scene.chew();this.sounds.play('chew',this.data.sound);}
   },
   action(event){
@@ -65,13 +86,20 @@ Page({
   startClock(){this.stopClock();this.lastBurn=Date.now();this.burnTimer=setInterval(()=>{const now=Date.now(),ms=Math.min(1500,now-this.lastBurn);this.lastBurn=now;if(this.client.state.cigarette.lit)this.run('burn',ms);},1000);},
   stopClock(){clearInterval(this.burnTimer);this.burnTimer=null;},
   toggleSound(){try{this.client.setPreference('sound',!this.data.sound);if(this.data.sound)this.sounds.play('chew',true);else this.sounds.stop();}catch(error){this.setData({error:error.message});}},
-  toggleFull(){this.setData({full:!this.data.full});if(this.data.full)wx.hideTabBar({animation:false});else wx.showTabBar({animation:false});this.resizeScene();},
+  toggleFull(){
+    if(this.switching||!this.visible)return;this.switching=true;this.releaseScene();const full=!this.data.full,token=++this.switchToken;
+    this.setData({full,renderer:full?'webgl':'2d',zoom:100,error:''},()=>{
+      if(token!==this.switchToken||!this.visible)return;
+      const complete=()=>{if(token!==this.switchToken||!this.visible)return;this.fitViewport(()=>wx.nextTick(()=>{if(token!==this.switchToken||!this.visible)return;this.switching=false;this.setupCanvas();}));};
+      if(full)wx.hideTabBar({animation:false,complete});else wx.showTabBar({animation:false,complete});
+    });
+  },
   zoom(event){this.setData({zoom:event.detail.value});if(this.scene)this.scene.setZoom(event.detail.value/100);},
   reset(){if(this.scene)this.scene.reset();this.setData({zoom:100});},
   clearFloor(){if(this.scene)this.scene.clear();},
-  touchStart(event){const t=event.touches[0];if(t&&this.scene)this.scene.touchStart(t.x,t.y);},
-  touchMove(event){const t=event.touches[0];if(t&&this.scene)this.scene.touchMove(t.x,t.y);},
-  touchEnd(){if(this.scene)this.scene.touchEnd();},
+  touchStart(event){const t=event.touches[0];if(t&&this.scene&&this.scene.touchStart)this.scene.touchStart(t.x,t.y);},
+  touchMove(event){const t=event.touches[0];if(t&&this.scene&&this.scene.touchMove)this.scene.touchMove(t.x,t.y);},
+  touchEnd(){if(this.scene&&this.scene.touchEnd)this.scene.touchEnd();},
   goAccount(){wx.switchTab({url:'/pages/account/index'});},
   rest(){
     this.stopAuto();this.stopBreathing();if(!this.run('putDown'))return;if(this.data.full)this.toggleFull();

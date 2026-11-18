@@ -52,3 +52,29 @@ test('source includes all native pages, resolvable imports, no template conditio
   for(const page of app.pages){for(const suffix of ['.js','.wxml','.wxss','.json'])assert(fs.existsSync(path.join(root,page+suffix)));const markup=fs.readFileSync(path.join(root,page+'.wxml'),'utf8');assert(!/wx:(?:if|elif|for)="(?!\{\{)/.test(markup));assert(!/<(?:br|div|span|script)\b/.test(markup));}
   for(const file of fs.readdirSync(root,{recursive:true}).filter(x=>x.endsWith('.js'))){const source=fs.readFileSync(path.join(root,file),'utf8');new vm.Script(source,{filename:file});for(const [,request] of source.matchAll(/require\(['"]([^'"]+)['"]\)/g))assert(fs.existsSync(path.resolve(root,path.dirname(file),request+'.js')),file+': '+request);}
 });
+
+test('home uses 2D and mode switches preserve the same simulation and records; stale queries and hidden switches cannot resurrect scenes',()=>{
+  const wx=platform(),client=new Client(wx,config),queries=[],ticks=[],tabs=[],instances=[];
+  const renderer=kind=>function(...args){const scene={kind,state:kind==='2d'?args[2]:args[4],starts:0,destroyed:false,start(){this.starts++;},destroy(){this.destroyed=true;},resize(){}};instances.push(scene);return scene;};
+  let def;const context={Page:value=>def=value,getApp:()=>({client}),wx,require:name=>name.endsWith('/audio')?class{stop(){} play(){}}:renderer(name.endsWith('/flat-scene')?'2d':name.endsWith('/webgl-scene')?'webgl':'fallback'),setTimeout,clearTimeout,setInterval,clearInterval};
+  wx.getWindowInfo=()=>({windowWidth:390,windowHeight:670,pixelRatio:2,screenHeight:844,safeArea:{bottom:810}});
+  wx.nextTick=fn=>ticks.push(fn);wx.hideTabBar=options=>tabs.push(options);wx.showTabBar=options=>tabs.push(options);
+  wx.createSelectorQuery=()=>{const ids=[];return {in(){return this;},select(id){ids.push(id);return this;},fields(){return this;},boundingClientRect(){return this;},exec(callback){queries.push({ids,callback});}};};
+  const resolveQuery=()=>{const q=queries.shift();q.callback(q.ids.map(()=>({node:{},width:370,height:310})));return q;};
+  const finishSwitch=()=>{tabs.shift().complete();while(ticks.length)ticks.shift()();};
+  vm.runInNewContext(fs.readFileSync(path.resolve('wechat/miniprogram/pages/index/index.js'),'utf8'),context);
+  def.data=structuredClone(def.data);def.setData=function(value,done){Object.assign(this.data,value);done?.();};
+  try{
+    def.onLoad();def.onReady();assert.equal(def.data.renderer,'2d');assert.deepEqual(queries[0].ids,['#home-canvas','#smoke-preview']);resolveQuery();assert.equal(def.scene.kind,'2d');
+    client.perform('chew');client.perform('light');client.perform('inhale');
+    const state=client.state,snapshot=JSON.stringify(state),stats=JSON.stringify(client.stats),first=def.scene;
+    def.toggleFull();assert(first.destroyed);finishSwitch();assert.deepEqual(queries[0].ids,['#immersive-canvas']);resolveQuery();assert.equal(def.scene.kind,'webgl');assert.equal(def.scene.state,state);assert.equal(def.data.bottomInset,34);
+    const full=def.scene;def.toggleFull();assert(full.destroyed);finishSwitch();resolveQuery();assert.equal(def.scene.kind,'2d');assert.equal(def.scene.state,state);assert.equal(JSON.stringify(client.state),snapshot);assert.equal(JSON.stringify(client.stats),stats);
+    // Leave a query pending, then select the other mode before it returns.
+    def.setupCanvas();def.toggleFull();finishSwitch();const count=instances.length;resolveQuery();assert.equal(instances.length,count);assert.equal(def.scene,null);resolveQuery();assert.equal(def.scene.kind,'webgl');
+    // A background transition must invalidate the pending native tab callback.
+    def.toggleFull();const pendingTab=tabs.shift();def.onHide();pendingTab.complete();while(ticks.length)ticks.shift()();assert.equal(def.scene,null);assert.equal(def.switching,false);assert.equal(queries.length,0);
+    def.onShow();resolveQuery();assert.equal(def.scene.kind,'2d');assert.equal(def.scene.state,state);assert.equal(JSON.stringify(client.stats),stats);
+    def.setupCanvas();def.onHide();const hiddenCount=instances.length;resolveQuery();assert.equal(instances.length,hiddenCount);assert.equal(def.scene,null);
+  }finally{def.onUnload();}
+});

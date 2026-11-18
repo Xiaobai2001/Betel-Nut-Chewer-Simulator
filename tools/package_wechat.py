@@ -23,7 +23,7 @@ def main():
     (output/'SHA256SUMS.txt').write_text(sha256(archive)+'  '+archive.name+'\n',encoding='utf-8')
     shutil.copy2(ROOT/'wechat/README.md',output/'先看导入说明.md')
     size=archive.stat().st_size
-    final=install_output(output,'微信小程序修正版')
+    final=install_output(output,f'微信小程序-{version}')
     print(f'Prepared: {final}; ZIP {size:,} bytes')
 
 if __name__=='__main__': main()

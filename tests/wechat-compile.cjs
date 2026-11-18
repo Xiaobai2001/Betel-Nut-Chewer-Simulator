@@ -18,7 +18,7 @@ for(const p of pages){
   const render=context.$gwx(p+'.wxml');assert.equal(typeof render,'function');
   function check(node){if(!node||typeof node!=='object')return;for(const [key,value] of Object.entries(node.attr||{})){if(/^bind|^catch/.test(key))assert.equal(typeof definition[value],'function',p+' handler '+value);}for(const child of node.children||[])check(child);}
   const tree=render(definition.data,{});assert(tree.children.length);check(tree);fs.writeFileSync(path.join(build,p.split('/')[1]+'.json'),JSON.stringify({data:definition.data,tree}));
-  if(p.includes('/index/')){definition.data.full=true;const full=render(definition.data,{});fs.writeFileSync(path.join(build,'immersive.json'),JSON.stringify({data:definition.data,tree:full}));}
+  if(p.includes('/index/')){definition.data.full=true;definition.data.renderer='webgl';const full=render(definition.data,{});fs.writeFileSync(path.join(build,'immersive.json'),JSON.stringify({data:definition.data,tree:full}));}
   if(p.includes('/progress/')){assert(JSON.stringify(tree).includes('未设置')||JSON.stringify(tree).includes('填写以前'));assert(!JSON.stringify(tree).includes('NaN'));}
   definition.unsubscribe?.();
 }

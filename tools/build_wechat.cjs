@@ -24,6 +24,9 @@ const helpers=visuals.slice(visuals.indexOf('  const TAU'),visuals.indexOf('  cl
 const nut=visuals.slice(visuals.indexOf('    nut(ctx'),visuals.indexOf('    mouth(ctx')).trim();
 if(!helpers||!nut.startsWith('nut(ctx'))throw Error('Website flat renderer changed; review native export');
 write('lib/web-nut.js','// Generated from app/visuals.js; same website artwork.\n'+helpers+'\nmodule.exports=function '+nut+';\n');
+const flatBody=visuals.slice(visuals.indexOf('  const TAU'),visuals.indexOf('  window.SimulatorVisuals'));
+if(!flatBody.includes('drawMain(now)')||!flatBody.includes('drawSmoke(now)'))throw Error('Website 2D scene changed; review native export');
+write('lib/web-visuals.js','// Generated from app/visuals.js: the complete 2D mouth, tray and smoking scene.\nmodule.exports=function(platform){\nconst window={devicePixelRatio:platform.pixelRatio};\nconst performance={now:platform.now};\nconst matchMedia=()=>({matches:platform.reduced});\n'+flatBody+'\nreturn Visuals;\n};\n');
 write('lib/three-mini.js',fs.readFileSync(path.join(root,'node_modules/threejs-miniprogram/dist/index.js')));
 write('lib/THREE-MINI-LICENSE.txt',fs.readFileSync(path.join(root,'node_modules/threejs-miniprogram/LICENSE')));
 // The bundled adapter embeds Three.js r108, whose license is retained separately.
