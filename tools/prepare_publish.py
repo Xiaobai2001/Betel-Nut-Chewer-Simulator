@@ -1,0 +1,137 @@
+"""Export allowlisted source and a standalone Windows Server package."""
+from __future__ import annotations
+import argparse
+import hashlib
+import html
+import json
+import re
+import shutil
+import tempfile
+import zipfile
+from datetime import datetime, timezone
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
+SOURCE_DIRS = ('app', 'src', 'desktop', 'android', 'tools', 'tests', 'docs', 'deploy', '.github')
+SOURCE_FILES = ('README.md', '.gitignore', '.gitattributes', 'package.json', 'package-lock.json', 'requirements-build.txt', '打开网页版.html')
+FORBIDDEN_PARTS = {'.git', '.private', '.build', 'node_modules', 'signing', 'android-signing', '__pycache__'}
+FORBIDDEN_SUFFIXES = {'.jks', '.keystore', '.p12', '.pfx', '.pem', '.key', '.pyc', '.exe', '.apk', '.zip'}
+
+def sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open('rb') as file:
+        for block in iter(lambda: file.read(1024 * 1024), b''):
+            digest.update(block)
+    return digest.hexdigest()
+
+def source_files() -> list[Path]:
+    selected = [ROOT / name for name in SOURCE_FILES if (ROOT / name).is_file()]
+    for folder in SOURCE_DIRS:
+        base = ROOT / folder
+        if not base.is_dir():
+            continue
+        for path in base.rglob('*'):
+            relative = path.relative_to(ROOT)
+            if any(part in FORBIDDEN_PARTS for part in relative.parts):
+                continue
+            if path.is_symlink() or not path.resolve().is_relative_to(ROOT):
+                raise RuntimeError(f'Linked file is not allowed: {relative}')
+            if path.is_file():
+                if path.suffix.lower() in FORBIDDEN_SUFFIXES or path.name.startswith('.env') or path.name.lower() == 'password.txt':
+                    raise RuntimeError(f'Private or generated file in source export: {relative}')
+                selected.append(path)
+    pattern = re.compile(rb'(?:gh[pousr]_[A-Za-z0-9]{30,}|github_pat_[A-Za-z0-9_]{30,}|-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----)')
+    for path in selected:
+        if pattern.search(path.read_bytes()):
+            raise RuntimeError(f'Credential-like material found in {path.relative_to(ROOT)}')
+    return sorted(set(selected))
+
+def write_zip(folder: Path, target: Path, prefix: str = '') -> None:
+    with zipfile.ZipFile(target, 'w', zipfile.ZIP_DEFLATED) as archive:
+        for path in sorted(folder.rglob('*')):
+            if path.is_file():
+                archive.write(path, prefix + path.relative_to(folder).as_posix())
+
+def install_output(stage: Path, name: str) -> Path:
+    delivery = (ROOT / '成品').resolve()
+    target = delivery / name
+    if name not in {'云服务器部署', 'GitHub发布'} or target.parent != delivery or target.is_symlink():
+        raise RuntimeError('Unexpected publication directory')
+    if target.exists():
+        backup = ROOT / '.build/backups/publication' / (datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%S%fZ') + '-' + name)
+        if not backup.resolve().is_relative_to((ROOT / '.build/backups').resolve()):
+            raise RuntimeError('Invalid backup path')
+        backup.parent.mkdir(parents=True, exist_ok=True)
+        shutil.move(str(target), str(backup))
+    delivery.mkdir(exist_ok=True)
+    if not stage.resolve().is_relative_to((ROOT / '.build').resolve()):
+        raise RuntimeError('Stage must be within .build')
+    shutil.move(str(stage), str(target))
+    return target
+
+def main() -> None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--check-source', action='store_true')
+    args = parser.parse_args()
+    files = source_files()
+    print(f'Source allowlist passed: {len(files)} files; private keys, caches and binaries excluded.')
+    if args.check_source:
+        return
+    version = json.loads((ROOT / 'package.json').read_text(encoding='utf-8'))['version']
+    if not re.fullmatch(r'\d+\.\d+\.\d+', version):
+        raise RuntimeError('Expected a stable x.y.z version')
+    binaries = {'windows': ROOT / '.build/releases/windows/ChewSimulator-Windows.exe', 'android': ROOT / '.build/releases/android/ChewSimulator-Android.apk'}
+    for path in binaries.values():
+        if not path.is_file():
+            raise RuntimeError(f'Build missing: {path.relative_to(ROOT)}')
+    with zipfile.ZipFile(binaries['android']) as apk:
+        for path in (ROOT / 'app').rglob('*'):
+            if path.is_file() and path.suffix != '.ico':
+                asset = 'assets/app/' + path.relative_to(ROOT / 'app').as_posix()
+                if apk.read(asset) != path.read_bytes():
+                    raise RuntimeError(f'APK resources are stale. Rebuild Android: {asset}')
+    build = ROOT / '.build'
+    build.mkdir(exist_ok=True)
+    stage = Path(tempfile.mkdtemp(prefix='publish-', dir=build))
+    server, github = stage / 'server', stage / 'github'
+    site, assets = server / 'site', github / 'release-assets'
+    assets.mkdir(parents=True)
+    shutil.copytree(ROOT / 'app', site)
+    shutil.copy2(ROOT / 'deploy/windows-server/web.config', site / 'web.config')
+    for script in ['Deploy-Site.ps1', 'Rollback-Site.ps1']:
+        shutil.copy2(ROOT / 'deploy/windows-server' / script, server / script)
+    shutil.copy2(ROOT / 'docs/windows-server.md', server / 'README.md')
+    downloads = site / 'downloads' / version
+    downloads.mkdir(parents=True)
+    names = {'windows': f'ChewSimulator-{version}-Windows.exe', 'android': f'ChewSimulator-{version}-Android.apk'}
+    for platform, source in binaries.items():
+        shutil.copy2(source, downloads / names[platform]); shutil.copy2(source, assets / names[platform])
+    web_zip_name = f'ChewSimulator-{version}-Web.zip'
+    write_zip(ROOT / 'app', assets / web_zip_name, 'web/')
+    shutil.copy2(assets / web_zip_name, downloads / web_zip_name)
+    catalog = {'version': version, 'installation': 'manual-download', 'otaAvailable': False, 'platforms': {key: {'path': f'downloads/{version}/{name}', 'sha256': sha256(downloads / name), 'bytes': (downloads / name).stat().st_size} for key, name in names.items()}}
+    (site / 'downloads.json').write_text(json.dumps(catalog, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+    (site / 'download.html').write_text(f'''<!doctype html><html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>嚼槟榔模拟器 · 下载</title><style>body{{margin:0;padding:50px 22px;background:#f7f8f4;color:#36452d;font:15px/1.9 "Microsoft YaHei",sans-serif}}main{{max-width:680px;margin:auto;background:white;border:1px solid #e1e8d7;border-radius:20px;padding:32px}}h1{{font-size:28px}}a{{display:block;background:#edf3e4;color:#4c623c;padding:12px 18px;border-radius:9px;margin:13px 0;text-decoration:none}}p{{color:#849373;font-size:13px}}small{{color:#9ba58e}}</style></head><body><main><small>THE CHEW SIMULATOR / {html.escape(version)}</small><h1>把体验，留在屏幕里。</h1><a href="./">直接进入网页版 →</a><a download href="downloads/{version}/{names['windows']}">下载 Windows 免安装版 EXE</a><a download href="downloads/{version}/{names['android']}">下载安卓 APK</a><a download href="downloads/{version}/{web_zip_name}">下载离线网页版 ZIP</a><p>当前版本需手动下载安装，尚未接入 OTA。安卓安装需要确认；Windows 版适用于 64 位 Windows 10/11。</p><p>槟榔致癌，吸烟有害健康。本软件仅为虚拟视觉模拟，建议戒槟榔、戒烟。</p></main></body></html>''', encoding='utf-8')
+    public_files = sorted(p for p in site.rglob('*') if p.is_file())
+    manifest = {'format': 'chew-static-release-v1', 'version': version, 'files': [{'path': p.relative_to(site).as_posix(), 'sha256': sha256(p)} for p in public_files]}
+    (site / 'release-manifest.json').write_text(json.dumps(manifest, indent=2) + '\n', encoding='utf-8')
+    write_zip(server, assets / f'ChewSimulator-{version}-WindowsServer.zip')
+    with zipfile.ZipFile(github / f'ChewSimulator-{version}-Source.zip', 'w', zipfile.ZIP_DEFLATED) as archive:
+        for path in files:
+            archive.write(path, 'Betel-Nut-Chewer-Simulator/' + path.relative_to(ROOT).as_posix())
+    (assets / 'SHA256SUMS.txt').write_text('\n'.join(sha256(p) + '  ' + p.name for p in sorted(assets.iterdir())) + '\n', encoding='utf-8')
+    shutil.copy2(ROOT / 'docs/release-notes.md', github / 'RELEASE_NOTES.md')
+    shutil.copy2(ROOT / 'docs/github.md', github / 'README.md')
+    for folder, name in [(server, '云服务器部署'), (github, 'GitHub发布')]:
+        print(f'Prepared: {install_output(folder, name).relative_to(ROOT)}')
+    (ROOT / '成品/README.md').write_text('''# 交付文件导航
+
+- `本机运行/`：本机双击的 EXE、安卓 APK 和离线网页版。
+- `云服务器部署/`：上传整个目录到 Windows Server，按其中 README 操作。只有 site/ 是 IIS 网站根目录。
+- `GitHub发布/`：源码 ZIP 与 release-assets/ 安装包。源码提交到 Git，安装包放在 GitHub Releases。
+
+当前客户端还没有 OTA。服务器由用户自行部署；生成部署包不代表已经在公网运行。
+''', encoding='utf-8')
+
+if __name__ == '__main__':
+    main()

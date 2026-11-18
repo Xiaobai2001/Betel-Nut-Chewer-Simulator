@@ -1,0 +1,49 @@
+{
+  "name": "chew-simulator",
+  "version": "1.1.1",
+  "description": "An offline visual simulator with quitting reminders",
+  "main": "desktop/main.cjs",
+  "author": "Chew Simulator",
+  "license": "UNLICENSED",
+  "scripts": {
+    "build:scene": "node tools/build_scene.cjs",
+    "package:delivery": "python tools/package_delivery.py",
+    "prepare:publish": "node tools/build_scene.cjs && python tools/prepare_publish.py",
+    "test:browser": "node tests/browser.cjs",
+    "test:immersive": "node tests/immersive.cjs",
+    "prebuild:win": "node tools/build_scene.cjs",
+    "prebuild:android": "node tools/build_scene.cjs",
+    "start": "electron .",
+    "serve": "node tools/serve.cjs",
+    "test": "node --test tests/*.test.cjs",
+    "build:win": "electron-builder --win portable --x64",
+    "build:android": "python tools/build_android.py"
+  },
+  "devDependencies": {
+    "electron": "38.8.6",
+    "electron-builder": "26.0.12",
+    "esbuild": "0.25.12",
+    "playwright": "1.56.1",
+    "three": "0.180.0"
+  },
+  "build": {
+    "appId": "com.chewsimulator.desktop",
+    "productName": "ChewSimulator",
+    "directories": {
+      "output": ".build/releases/windows"
+    },
+    "files": [
+      "app/**/*",
+      "desktop/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": "portable",
+      "icon": "app/assets/icon.ico",
+      "signAndEditExecutable": false
+    },
+    "portable": {
+      "artifactName": "ChewSimulator-Windows.exe"
+    }
+  }
+}
