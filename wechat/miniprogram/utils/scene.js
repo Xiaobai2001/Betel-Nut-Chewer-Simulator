@@ -1,3 +1,4 @@
+const drawWebNut=require('../lib/web-nut');
 const clamp = (n,a,b) => Math.max(a,Math.min(b,n));
 const random = n => { const value=Math.sin(n*127.1+31.7)*43758.5453; return value-Math.floor(value); };
 class Scene {
@@ -8,8 +9,7 @@ class Scene {
     this.yaw=-.25; this.pitch=.25; this.zoom=1; this.smokePosition=null;
     this.chewAt=-10000; this.smokeAt=-10000; this.flights=[]; this.puffs=[]; this.last=0;
     this.reduced=false; this.active=false; this.pointer=null; this.frame=this.frame.bind(this);
-    this.mesh=[];
-    for(let a=0;a<18;a++) for(let b=0;b<36;b++) this.mesh.push([[a,b],[a+1,b],[a+1,b+1],[a,b+1]]);
+
   }
   start(){if(this.active)return;this.active=true;this.last=0;this.frame(Date.now());}
   stop(){this.active=false;if(this.raf)this.canvas.cancelAnimationFrame(this.raf);this.pointer=null;}
@@ -34,47 +34,10 @@ class Scene {
     this.pointer.x=x;this.pointer.y=y;
   }
   touchEnd(){this.pointer=null;}
-  turn(p,yaw,pitch){
-    const x=p.x*Math.cos(yaw)+p.z*Math.sin(yaw),z=-p.x*Math.sin(yaw)+p.z*Math.cos(yaw);
-    return {x,y:p.y*Math.cos(pitch)-z*Math.sin(pitch),z:p.y*Math.sin(pitch)+z*Math.cos(pitch)};
-  }
   drawNut(x,y,scale,nut,yaw,pitch,bite){
     if(!nut)return;
-    const ctx=this.ctx,w=nut.wear/100,vertices=[];
-    for(let a=0;a<=18;a++){
-      vertices[a]=[];
-      for(let b=0;b<=36;b++){
-        const theta=a/18*Math.PI,phi=b/36*Math.PI*2,noise=1+.025*Math.sin(theta*54+phi*7),r=Math.sin(theta)*noise;
-        vertices[a][b]=this.turn({x:Math.cos(theta)*1.3*(1+w*.18),y:r*Math.cos(phi)*.53*(1-w*.64)*(1-bite*.15),z:r*Math.sin(phi)*.58*(1-w*.15)},yaw,pitch);
-      }
-    }
-    const faces=this.mesh.map((indices,i)=>{const points=indices.map(p=>vertices[p[0]][p[1]]);return{points,i,z:points.reduce((s,p)=>s+p.z,0)/4};}).sort((a,b)=>a.z-b.z);
-    ctx.save();ctx.translate(x,y);ctx.scale(scale,scale);
-    for(const face of faces){
-      const p=face.points;
-      const ax=p[1].x-p[0].x,ay=p[1].y-p[0].y,az=p[1].z-p[0].z,bx=p[2].x-p[0].x,by=p[2].y-p[0].y,bz=p[2].z-p[0].z;
-      const nx=ay*bz-az*by,ny=az*bx-ax*bz,nz=ax*by-ay*bx,len=Math.hypot(nx,ny,nz)||1;
-      const shade=.63+.32*Math.abs((nx*-.3+ny*-.5+nz*.8)/len)+random(face.i)*.11;
-      const brown=[174,131,76].map(v=>Math.round(v*shade*(1-w*.34)));
-      ctx.beginPath();p.forEach((v,i)=>{const f=1+v.z*.06;i?ctx.lineTo(v.x*f,v.y*f):ctx.moveTo(v.x*f,v.y*f);});ctx.closePath();ctx.fillStyle='rgb('+brown.join(',')+')';ctx.fill();
-      ctx.strokeStyle='rgba(64,38,16,.13)';ctx.lineWidth=.009;ctx.stroke();
-    }
-    // Longitudinal fibres remain on the visible half of the rotated shell.
-    for(let b=0;b<85;b++){
-      const phi=b/85*Math.PI*2;ctx.beginPath();let drawing=false;
-      for(let a=1;a<40;a++){
-        const t=a/40*Math.PI,r=Math.sin(t)*(1+.026*Math.sin(t*27+b));
-        const p=this.turn({x:Math.cos(t)*1.31*(1+w*.18),y:r*Math.cos(phi)*.54*(1-w*.64),z:r*Math.sin(phi)*.59*(1-w*.15)},yaw,pitch);
-        if(p.z<0){drawing=false;continue;}const f=1+p.z*.06;
-        if(!drawing){ctx.moveTo(p.x*f,p.y*f);drawing=true;}else ctx.lineTo(p.x*f,p.y*f);
-      }
-      ctx.strokeStyle=b%3?'rgba(235,203,144,.48)':'rgba(65,39,19,.55)';ctx.lineWidth=.007+(b%4)*.002;ctx.stroke();
-    }
-    if(w>.05)for(let i=0;i<Math.round(45*w);i++){
-      const angle=random(i+10)*Math.PI*2,start=this.turn({x:Math.cos(angle)*1.18,y:Math.sin(angle)*.26,z:.1},yaw,pitch);
-      ctx.beginPath();ctx.moveTo(start.x,start.y);ctx.quadraticCurveTo(start.x*1.15,start.y*1.3-.08,start.x*(1.18+random(i)*.15),start.y*1.5+(random(i+9)-.5)*.25);ctx.strokeStyle='#b58e57';ctx.lineWidth=.008;ctx.stroke();
-    }
-    ctx.restore();
+    const ctx=this.ctx;ctx.save();ctx.translate(x,y);ctx.scale(1,.4+Math.abs(Math.cos(pitch))*.6);
+    drawWebNut(ctx,0,0,nut,scale/64,bite,yaw-.12);ctx.restore();
   }
   drawSmoke(now,dt){
     const ctx=this.ctx,c=this.state.cigarette,w=this.width,h=this.height,p=this.smokePosition||{x:.76,y:.65},x=p.x*w,y=p.y*h;

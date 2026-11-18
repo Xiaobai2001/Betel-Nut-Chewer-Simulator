@@ -67,7 +67,7 @@ async function createApp(pool, config) {
     else res.cookie('chew_session', token, { ...cookieOptions, maxAge: 14 * 86400000 });
     return { id: publicId(user.id), username: user.username, displayName: user.display_name };
   }
-  app.get('/api/health', async (req, res) => { await pool.query('SELECT 1'); res.json({ ok: true, version: '1.5.0' }); });
+  app.get('/api/health', async (req, res) => { await pool.query('SELECT 1'); res.json({ ok: true, version: '1.5.1' }); });
   app.get('/api/session', authenticate, (req, res) => res.json({ user: req.user || null, registration: config.allowRegistration !== false }));
   app.post('/api/register', rateLimit('register', 5, 3600000), async (req, res) => {
     if (config.allowRegistration === false) return res.status(403).json({ error: '本站暂未开放注册。' });

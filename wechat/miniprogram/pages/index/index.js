@@ -1,11 +1,12 @@
 const Scene=require('../../utils/scene');
+const WebScene=require('../../utils/webgl-scene');
 const Sounds=require('../../utils/audio');
 Page({
-  data:{wear:0,bites:0,fibers:0,pack:50,remaining:9,capacity:10,smokeRemaining:20,hasNut:true,lit:false,holding:false,used:0,sound:false,auto:false,full:false,zoom:100,sceneHeight:300,safeTop:28,packEffect:null,breathing:false,breathSeconds:60,breathPhase:'轻轻吸气',error:'',tiers:[{tier:50,name:'青椰绿',capacity:10},{tier:100,name:'秋山金',capacity:15},{tier:200,name:'夜岩黑',capacity:20}]},
+  data:{renderer:'webgl',wear:0,bites:0,fibers:0,pack:50,remaining:9,capacity:10,smokeRemaining:20,hasNut:true,lit:false,holding:false,used:0,sound:false,auto:false,full:false,zoom:100,sceneHeight:300,safeTop:28,packEffect:null,breathing:false,breathSeconds:60,breathPhase:'轻轻吸气',error:'',tiers:[{tier:50,name:'青椰绿',capacity:10},{tier:100,name:'秋山金',capacity:15},{tier:200,name:'夜岩黑',capacity:20}]},
   onLoad(){
     this.client=getApp().client;this.sounds=new Sounds();this.unsubscribe=this.client.subscribe(()=>this.update());
     const info=wx.getWindowInfo?wx.getWindowInfo():wx.getSystemInfoSync();this.windowInfo=info;
-    this.setData({safeTop:(info.statusBarHeight||24)+8,sceneHeight:Math.min(330,info.windowWidth*.82)});this.update();
+    this.setData({safeTop:(info.statusBarHeight||24)+8,sceneHeight:Math.min(330,info.windowWidth*.82),pageWidth:info.windowWidth});this.update();
   },
   onReady(){this.setupCanvas();},
   onShow(){if(!this.client)return;this.update();if(this.scene){this.resizeScene();this.scene.start();}this.startClock();},
@@ -13,15 +14,25 @@ Page({
   onUnload(){this.onHide();if(this.unsubscribe)this.unsubscribe();if(this.scene)this.scene.destroy();clearTimeout(this.packTimer);},
   onResize(){if(wx.getWindowInfo)this.windowInfo=wx.getWindowInfo();this.resizeScene();},
   setupCanvas(){
+    if(this.scene){this.scene.destroy();this.scene=null;}
     const query=wx.createSelectorQuery().in(this);query.select('#scene').fields({node:true,size:true,rect:true}).exec(result=>{
       const item=result[0];if(!item||!item.node){this.setData({error:'画布初始化失败，请升级微信后重试。'});return;}
-      this.canvasNode=item.node;this.scene=new Scene(item.node,item.width,item.height,this.windowInfo.pixelRatio,this.client.state);this.scene.reduced=this.client.preferences.reducedMotion;this.scene.start();
+      this.canvasNode=item.node;
+      try{
+        this.scene=this.data.renderer==='webgl'?new WebScene(item.node,item.width,item.height,this.windowInfo.pixelRatio,this.client.state,{reduced:this.client.preferences.reducedMotion,onError:()=>wx.nextTick(()=>this.canvasError())}):new Scene(item.node,item.width,item.height,this.windowInfo.pixelRatio,this.client.state);
+        this.scene.reduced=this.client.preferences.reducedMotion;this.scene.start();
+      }catch(error){
+        if(this.scene)this.scene.destroy();this.scene=null;
+        if(this.data.renderer==='webgl'){this.setData({renderer:'2d'});wx.nextTick(()=>this.setupCanvas());}
+        else this.setData({error:'场景初始化失败，请重新编译或升级微信后重试。'});
+      }
     });
   },
   resizeScene(){
-    const info=this.windowInfo||{};this.setData({sceneHeight:this.data.full?Math.max(180,info.windowHeight-this.data.safeTop-260):Math.min(330,info.windowWidth*.82)});
+    const info=this.windowInfo||{};this.setData({pageWidth:info.windowWidth,sceneHeight:this.data.full?Math.max(180,info.windowHeight-this.data.safeTop-260):Math.min(330,info.windowWidth*.82)});
     wx.nextTick(()=>wx.createSelectorQuery().in(this).select('#scene').boundingClientRect(rect=>{if(rect&&this.scene)this.scene.resize(rect.width,rect.height);}).exec());
   },
+  canvasError(){if(this.data.renderer==='webgl'){if(this.scene)this.scene.destroy();this.scene=null;this.setData({renderer:'2d'});wx.nextTick(()=>this.setupCanvas());}},
   update(){
     const s=this.client.state,n=s.nut,c=s.cigarette;
     if(this.scene){this.scene.state=s;this.scene.reduced=this.client.preferences.reducedMotion;}
@@ -38,7 +49,7 @@ Page({
     const type=event.currentTarget.dataset.action,nut=this.client.state.nut&&Object.assign({},this.client.state.nut);
     if(!this.run(type))return;
     if(type==='spit'||type==='discard'){if(this.scene)this.scene.spit(type==='discard',nut);this.sounds.play('spit',this.data.sound);}
-    if(type==='inhale')this.sounds.play('inhale',this.data.sound);
+    if(type==='inhale'){if(this.scene&&this.scene.inhale)this.scene.inhale();this.sounds.play('inhale',this.data.sound);}
     if(type==='exhale'){if(this.scene)this.scene.exhale();this.sounds.play('exhale',this.data.sound);}
     if(type==='light')this.startClock();
   },
@@ -61,6 +72,7 @@ Page({
   touchStart(event){const t=event.touches[0];if(t&&this.scene)this.scene.touchStart(t.x,t.y);},
   touchMove(event){const t=event.touches[0];if(t&&this.scene)this.scene.touchMove(t.x,t.y);},
   touchEnd(){if(this.scene)this.scene.touchEnd();},
+  goAccount(){wx.switchTab({url:'/pages/account/index'});},
   rest(){
     this.stopAuto();this.stopBreathing();if(!this.run('putDown'))return;if(this.data.full)this.toggleFull();
     this.setData({breathing:true,breathSeconds:60,breathPhase:'轻轻吸气'});this.breathStart=Date.now();

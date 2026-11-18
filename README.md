@@ -2,19 +2,19 @@
 
 一个可离线运行的中文视觉模拟器，包含咀嚼形变、吐渣和吐出、三档虚拟包装、吸吐烟动画，以及戒槟榔、戒烟提醒。全屏模式采用明亮奶油白界面，支持三维旋转、缩放、香烟独立拖动与拆袋动画。
 
-当前网页版本：**1.5.0**，支持访客自行注册、登录、用量统计、包装足迹、戒除成就、现实每日打卡与省钱估算。50 / 100 / 200 档每包分别为 10 / 15 / 20 颗，香烟每盒 20 根，全屏操作在底部。账号后台使用 Node.js 24 + MySQL 8.0。已有 Windows EXE / Android APK 仍为 **1.1.1 离线版**，没有账号或 OTA。
+当前网页版本：**1.5.1**，支持访客自行注册、登录、用量统计、包装足迹、戒除成就、现实每日打卡与省钱估算。50 / 100 / 200 档每包分别为 10 / 15 / 20 颗，香烟每盒 20 根，全屏操作在底部。账号后台使用 Node.js 24 + MySQL 8.0。已有 Windows EXE / Android APK 仍为 **1.1.1 离线版**，没有账号或 OTA。
 
 > 当前 EXE / APK 尚未实现 OTA。服务器下载页提供手动下载，发布目录和校验文件不等于已经具备自动更新。
 
 ## 使用与下载
 
 - 网页：双击 `打开网页版.html`，或打开 `app/index.html`。
-- 微信：开发者工具导入 `wechat/`，或运行 `npm run prepare:wechat` 后导入 `成品/微信小程序/微信小程序源码/`。无需 npm 构建；详见 [小程序导入与发布说明](wechat/README.md)。默认本机访客，云账号需合法 HTTPS 域名及 1.5.0 后台。
+- 微信：开发者工具导入 `wechat/`，或运行 `npm run prepare:wechat` 后导入 `成品/微信小程序修正版/微信小程序源码/`。无需 npm 构建；详见 [小程序导入与发布说明](wechat/README.md)。默认本机访客，云账号需合法 HTTPS 域名及 1.5.0 或更高版本后台。
 - 本机成品：打包后在 `成品/本机运行/`。
 - 安装包：[GitHub Releases](https://github.com/Xiaobai2001/Betel-Nut-Chewer-Simulator/releases)。安装包放在 Releases，不提交到源码仓库。
 - 操作方式与快捷键：[使用说明](docs/usage.md)。
 
-当前发布账号网页版：在开发电脑运行 `npm.cmd run prepare:accounts`，将 `成品/账号网页版部署/ChewSimulator-1.5.0-WebAccounts.zip` 上传到 Windows Server，按[账号与 MySQL 部署步骤](docs/accounts-server.md)操作。默认使用新端口 8081，保留原 IIS 8080 网站。不要仅复制 HTML 到 IIS，账号功能需要运行后台。
+当前发布账号网页版：在开发电脑运行 `npm.cmd run prepare:accounts`，将 `成品/账号网页版部署/ChewSimulator-1.5.1-WebAccounts.zip` 上传到 Windows Server，按[账号与 MySQL 部署步骤](docs/accounts-server.md)操作。默认使用新端口 8081，保留原 IIS 8080 网站。不要仅复制 HTML 到 IIS，账号功能需要运行后台。
 
 仍可运行 `npm.cmd run prepare:web` 导出纯静态 IIS 包，或双击 HTML 使用访客模式；这两种方式没有账号后台。
 
@@ -42,8 +42,8 @@ Betel-Nut-Chewer-Simulator/
 ├── .build/                     SDK、编译结果、截图、备份；不进入 Git
 ├── node_modules/               开发依赖；不进入 Git
 └── 成品/                       自动生成；不进入 Git
-    ├── 微信小程序/              可导入的原生源码文件夹与 ZIP
-    ├── 账号网页版部署/          当前 1.5.0：Node + MySQL 部署 ZIP
+    ├── 微信小程序修正版/              可导入的原生源码文件夹与 ZIP
+    ├── 账号网页版部署/          当前 1.5.1：Node + MySQL 部署 ZIP
     ├── 网页服务器部署/          纯静态 IIS 部署 ZIP（访客模式）
     ├── 本机运行/
     ├── 云服务器部署/

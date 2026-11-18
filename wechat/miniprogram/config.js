@@ -3,7 +3,7 @@
 module.exports = {
   apiBase: '',
   allowInsecureDevelopment: false,
-  version: '1.5.0',
+  version: '1.5.1',
   // 可选：填写真实的开发者联系邮箱。未填时使用微信“意见反馈”入口。
   contact: ''
 };

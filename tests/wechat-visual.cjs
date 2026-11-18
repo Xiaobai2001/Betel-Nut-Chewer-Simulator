@@ -24,19 +24,25 @@ function html(node){
     const pageName=name==='immersive'?'index':name,compiled=JSON.parse(fs.readFileSync(path.join(output,name+'.json')));
     let css=fs.readFileSync(path.join(root,'app.wxss'),'utf8')+'\n'+fs.readFileSync(path.join(root,'pages',pageName,'index.wxss'),'utf8');
     css=css.replace(/\bpage\b/g,'body').replace(/(?<![.#\w-])view(?=[\s,:.>\[{])/g,'div').replace(/(?<![.#\w-])text(?=[\s,:.>\[{])/g,'span').replace(/([\d.]+)rpx/g,(_,n)=>Number(n)*width/750+'px');
-    await page.setContent('<meta charset="utf-8"><style>body{margin:0}div,span,button,input,main{box-sizing:border-box}button{display:block;width:100%;border:0}input{width:100%}input[type=checkbox]{width:35px}canvas{display:block}slider,.range-adapter{width:40%;flex:1}'+css+'</style>'+html(compiled.tree));
+    await page.setContent('<meta charset="utf-8"><style>body{margin:0}div,span,button,input,main{box-sizing:border-box}button{display:block;border:0}button:not([size=mini]){width:184px}input{width:100%}input[type=checkbox]{width:35px}canvas{display:block}slider,.range-adapter{width:40%;flex:1}'+css+'</style>'+html(compiled.tree));
     if(pageName==='index'){
       await page.addScriptTag({content:fs.readFileSync(path.join(root,'lib/model.js'),'utf8')});
-      await page.addScriptTag({content:'var module={exports:{}};'+fs.readFileSync(path.join(root,'utils/scene.js'),'utf8')+';window.NativeScene=module.exports;'});
-      await page.evaluate(()=>{const canvas=document.querySelector('canvas'),bounds=canvas.getBoundingClientRect();canvas.requestAnimationFrame=requestAnimationFrame.bind(window);canvas.cancelAnimationFrame=cancelAnimationFrame.bind(window);window.model=new Simulator();window.scene=new NativeScene(canvas,bounds.width,bounds.height,1,model);scene.start();});
-      await page.waitForTimeout(120);await page.screenshot({path:path.join(output,name+'-'+width+'.png'),fullPage:true});
-      await page.evaluate(()=>{for(let i=0;i<15;i++)model.chew();scene.yaw+=.7;model.light();model.inhale();scene.exhale();scene.spit(false,model.nut);});
+      await page.addScriptTag({content:'var exports={};'+fs.readFileSync(path.join(root,'lib/three-mini.js'),'utf8')+';window.MiniThree=exports;'});
+      await page.addScriptTag({content:'var module={exports:{}};'+fs.readFileSync(path.join(root,'lib/web-scene.js'),'utf8')+';window.WebCore=module.exports;'});
+      await page.addScriptTag({content:'var module={exports:{}};var require=name=>name.includes("three-mini")?MiniThree:WebCore;'+fs.readFileSync(path.join(root,'utils/webgl-scene.js'),'utf8')+';window.NativeScene=module.exports;'});
+      await page.evaluate(()=>{const canvas=document.querySelector('canvas'),bounds=canvas.getBoundingClientRect();canvas.createImage=()=>new Image();window.wx={createOffscreenCanvas:()=>document.createElement('canvas')};canvas.requestAnimationFrame=requestAnimationFrame.bind(window);canvas.cancelAnimationFrame=cancelAnimationFrame.bind(window);window.model=new Simulator();window.scene=new NativeScene(canvas,bounds.width,bounds.height,1,model);scene.start();});
+      await page.waitForTimeout(200);assert.match(await page.evaluate(()=>{const gl=scene.renderer.getContext();return gl.getParameter(gl.VERSION);}),/WebGL/);await page.screenshot({path:path.join(output,name+'-'+width+'.png'),fullPage:true});
+      await page.evaluate(()=>{for(let i=0;i<15;i++)model.chew();scene.yaw+=.7;model.light();model.inhale();scene.exhale();scene.spit(false,model.nut);const b=scene.smokeBounds;scene.touchStart(b.x+b.width/2,b.y+b.height/2);scene.touchMove(b.x+b.width/2+10,b.y+b.height/2-10);scene.touchEnd();});
       await page.waitForTimeout(130);assert.equal(await page.evaluate(()=>model.nut.wear),100);
       await page.screenshot({path:path.join(output,name+'-worn-'+width+'.png'),fullPage:true});
       if(name==='immersive')assert(await page.locator('.health-note').evaluate(el=>el.getBoundingClientRect().bottom)<=844,'Immersive bottom controls overflow');
     }else await page.screenshot({path:path.join(output,name+'-'+width+'.png'),fullPage:true});
-    assert(await page.evaluate(()=>document.documentElement.scrollWidth)<=width,name+' horizontal overflow');assert.deepEqual(errors,[]);await page.close();
+    assert(await page.evaluate(()=>document.documentElement.scrollWidth)<=width,name+' horizontal overflow');
+    const clipped=await page.locator('button').evaluateAll((buttons,w)=>buttons.filter(button=>{const r=button.getBoundingClientRect();return r.height>0&&(r.left < -1 || r.right > w+1 || r.width<30);}).map(button=>button.textContent),width);
+    assert.deepEqual(clipped,[],name+' clipped native buttons');
+    if(pageName==='index'){assert.equal(await page.locator('.account-pill').evaluate(el=>el.scrollWidth<=el.clientWidth+1),true,'visitor badge wrapped/clipped');}
+    assert.deepEqual(errors,[]);await page.close();
   }
-  console.log('PASS: compiled WXML visual adapter at 360/390 px, immersive bottom controls, Canvas render/rotation/wear/smoke/spit without JS errors');
+  console.log('PASS: compiled WXML visual adapter at 360/390 px, immersive bottom controls, shared native WebGL scene/rotation/drag/wear/smoke/spit without JS errors');
  }finally{await browser.close();}
 })().catch(error=>{console.error(error);process.exitCode=1;});
