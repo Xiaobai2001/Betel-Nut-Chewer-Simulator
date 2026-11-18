@@ -24,7 +24,15 @@ const { verifyPassword } = require('../server/security.cjs');
     return { data: result, cookie: response.headers.get('set-cookie')?.split(';')[0], response };
   };
   try {
-    await initializeSchema(pool); await start();
+    const oldSchema = require('node:fs').readFileSync(require('node:path').join(__dirname, 'fixtures/schema-1.2.sql'), 'utf8');
+    for (const sql of oldSchema.split(';').map(s => s.trim()).filter(Boolean)) await pool.query(sql);
+    const [seed] = await pool.execute("INSERT INTO chew_users(username,display_name,password_hash) VALUES('upgrade_legacy','legacy','placeholder')");
+    await pool.execute('INSERT INTO chew_daily(user_id,day,bites,nuts_started,nuts_completed) VALUES(?,?,30,2,2)', [seed.insertId, dayInChina()]);
+    await initializeSchema(pool); await initializeSchema(pool);
+    const migrated = await getStats(pool, seed.insertId);
+    assert.equal(migrated.total.bites, 30); assert.equal(migrated.progress.unknownLegacyNuts, 2); assert.equal(migrated.total.cigarettes_lit, 0);
+    console.log('PASS: repeated schema upgrade preserves 1.2 account statistics without inventing package or smoking history');
+    await start();
     assert.equal((await request('health')).data.ok, true);
     await request('stats', undefined, null, 401);
     const a = await request('register', { username: 'Alice', password: 'example-password-a', displayName: '测试甲' }, null, 201);
@@ -60,6 +68,7 @@ const { verifyPassword } = require('../server/security.cjs');
     const dated = await getStats(pool, b.data.user.id, new Date('2026-01-01T16:00:01Z'));
     assert.equal(dated.today.bites, 1); assert.equal(dated.today.day, '2026-01-02');
     console.log('PASS: registration, salted hashes, session cookies, isolation, duplicate/concurrent replay, rollback, date boundary, CSRF, private file isolation');
+    await require('./progress-integration.cjs')(request, pool, b.cookie, b.data.user.id);
     await stop(); await pool.end(); pool = createPool({ ...config, database }); await start();
     assert.equal((await request('stats', undefined, a.cookie)).data.total.bites, 21);
     await request('logout', { accountId: b.data.user.id }, a.cookie, 403);
@@ -75,6 +84,7 @@ const { verifyPassword } = require('../server/security.cjs');
     if (process.argv.includes('--browser')) {
       await stop(); await start();
       await require('./accounts-browser.cjs')(origin, pool);
+      await require('./progress-browser.cjs')(origin);
     }
   } finally {
     if (server?.listening) await stop();

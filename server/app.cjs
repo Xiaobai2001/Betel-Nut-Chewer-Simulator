@@ -2,7 +2,7 @@ const express = require('express');
 const path = require('node:path');
 const crypto = require('node:crypto');
 const { hashPassword, verifyPassword, digestToken, accountInput } = require('./security.cjs');
-const { validateEvents, recordEvents, getStats } = require('./store.cjs');
+const { validateEvents, recordEvents, getStats, saveCheckin } = require('./store.cjs');
 
 async function createApp(pool, config) {
   const app = express();
@@ -54,7 +54,7 @@ async function createApp(pool, config) {
     res.cookie('chew_session', token, { ...cookieOptions, maxAge: 14 * 86400000 });
     return { id: Number(user.id), username: user.username, displayName: user.display_name };
   }
-  app.get('/api/health', async (req, res) => { await pool.query('SELECT 1'); res.json({ ok: true, version: '1.2.0' }); });
+  app.get('/api/health', async (req, res) => { await pool.query('SELECT 1'); res.json({ ok: true, version: '1.3.0' }); });
   app.get('/api/session', authenticate, (req, res) => res.json({ user: req.user || null, registration: config.allowRegistration !== false }));
   app.post('/api/register', rateLimit('register', 5, 3600000), async (req, res) => {
     if (config.allowRegistration === false) return res.status(403).json({ error: '本站暂未开放注册。' });
@@ -80,8 +80,13 @@ async function createApp(pool, config) {
     res.clearCookie('chew_session', cookieOptions); res.json({ ok: true });
   });
   app.get('/api/stats', authenticate, required, async (req, res) => res.json({ accountId: req.user.id, ...await getStats(pool, req.user.id) }));
-  app.post('/api/events', authenticate, required, rateLimit('events', 180, 60000), async (req, res) => {
+  app.post('/api/checkin', authenticate, required, rateLimit('checkin', 30, 60000), async (req, res) => {
+    if (req.body?.accountId !== req.user.id) return res.status(403).json({ error: '登录账号已变化，请刷新后重新打卡。' });
+    res.json(await saveCheckin(pool, req.user.id, req.body));
+  });
+  app.post(['/api/events', '/api/events-v2'], authenticate, required, rateLimit('events', 180, 60000), async (req, res) => {
     if (req.body?.accountId !== req.user.id) return res.status(403).json({ error: '登录账号已变化，请重新登录对应账号后同步。' });
+    if (req.path === '/api/events-v2' && req.body?.protocol !== 2) return res.status(400).json({ error: '此接口需要新版操作协议。' });
     if (!validateEvents(req.body)) return res.status(400).json({ error: '无效的操作记录。' });
     res.json(await recordEvents(pool, req.user.id, req.body));
   });

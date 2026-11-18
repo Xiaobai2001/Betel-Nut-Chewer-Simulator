@@ -2,7 +2,7 @@
 
 一个可离线运行的中文视觉模拟器，包含咀嚼形变、吐渣和吐出、三档虚拟包装、吸吐烟动画，以及戒槟榔、戒烟提醒。全屏模式采用明亮奶油白界面，支持三维旋转和缩放。
 
-当前网页版本：**1.2.0**，支持访客自行注册、登录和 MySQL 统计，全屏操作在底部。账号后台使用 Node.js 24 + MySQL 8.0。已有 Windows EXE / Android APK 仍为 **1.1.1 离线版**，没有账号或 OTA。
+当前网页版本：**1.3.0**，支持访客自行注册、登录、用量统计、包装足迹、戒除成就和现实每日打卡。50 / 100 / 200 档每包分别为 10 / 15 / 20 颗，香烟每盒 20 根，全屏操作在底部。账号后台使用 Node.js 24 + MySQL 8.0。已有 Windows EXE / Android APK 仍为 **1.1.1 离线版**，没有账号或 OTA。
 
 > 当前 EXE / APK 尚未实现 OTA。服务器下载页提供手动下载，发布目录和校验文件不等于已经具备自动更新。
 
@@ -13,9 +13,11 @@
 - 安装包：[GitHub Releases](https://github.com/Xiaobai2001/Betel-Nut-Chewer-Simulator/releases)。安装包放在 Releases，不提交到源码仓库。
 - 操作方式与快捷键：[使用说明](docs/usage.md)。
 
-当前发布账号网页版：在开发电脑运行 `npm.cmd run prepare:accounts`，将 `成品/账号网页版部署/ChewSimulator-1.2.0-WebAccounts.zip` 上传到 Windows Server，按[账号与 MySQL 部署步骤](docs/accounts-server.md)操作。默认使用新端口 8081，保留原 IIS 8080 网站。不要仅复制 HTML 到 IIS，账号功能需要运行后台。
+当前发布账号网页版：在开发电脑运行 `npm.cmd run prepare:accounts`，将 `成品/账号网页版部署/ChewSimulator-1.3.0-WebAccounts.zip` 上传到 Windows Server，按[账号与 MySQL 部署步骤](docs/accounts-server.md)操作。默认使用新端口 8081，保留原 IIS 8080 网站。不要仅复制 HTML 到 IIS，账号功能需要运行后台。
 
 仍可运行 `npm.cmd run prepare:web` 导出纯静态 IIS 包，或双击 HTML 使用访客模式；这两种方式没有账号后台。
+
+用量与成就口径见 [记录、包装与戒除成就](docs/progress.md)。从 1.2.0 升级时需重新运行安装脚本、输入 MySQL 管理凭据完成新增表初始化；原账号与统计保留。
 
 ## 目录
 
@@ -38,7 +40,7 @@ Betel-Nut-Chewer-Simulator/
 ├── .build/                     SDK、编译结果、截图、备份；不进入 Git
 ├── node_modules/               开发依赖；不进入 Git
 └── 成品/                       自动生成；不进入 Git
-    ├── 账号网页版部署/          当前 1.2.0：Node + MySQL 部署 ZIP
+    ├── 账号网页版部署/          当前 1.3.0：Node + MySQL 部署 ZIP
     ├── 网页服务器部署/          纯静态 IIS 部署 ZIP（访客模式）
     ├── 本机运行/
     ├── 云服务器部署/

@@ -41,5 +41,5 @@ jobs:
       - run: python tools/prepare_publish.py --check-source
       - run: python tools/prepare_publish.py --web-only
       - run: python tools/prepare_publish.py --accounts
-      - run: node --check app/app.js && node --check app/immersive.js && node --check app/account.js && node --check server/setup.cjs
+      - run: node --check app/app.js && node --check app/immersive.js && node --check app/account.js && node --check app/progress.js && node --check server/setup.cjs
       - run: git diff --exit-code -- app/immersive-scene.js app/immersive-scene.js.LEGAL.txt app/THREE-LICENSE.txt

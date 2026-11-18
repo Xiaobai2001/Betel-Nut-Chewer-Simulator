@@ -7,7 +7,7 @@ module.exports = async function (origin) {
   const errors = []; context.on('page', page => page.on('pageerror', error => errors.push(error.message)));
   fs.mkdirSync('.build/test-results', { recursive: true });
   let blockEvents = false, loseAcknowledgement = false;
-  await context.route('**/api/events', async route => {
+  await context.route('**/api/events*', async route => {
     if (blockEvents) return route.abort();
     if (loseAcknowledgement) { loseAcknowledgement = false; await route.fetch(); return route.abort(); }
     return route.continue();

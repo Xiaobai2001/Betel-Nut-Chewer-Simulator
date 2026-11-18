@@ -64,9 +64,10 @@
       $('immersive-progress-bar').style.width = (nut?.wear || 0) + '%';
       $('immersive-nut-status').textContent = $('wear-label').textContent;
       $('immersive-pack-label').textContent = nut ? nut.pack + ' 档' : '空口状态';
-      $('immersive-stock').textContent = `剩余 ${this.state.remaining} / 8`;
+      $('immersive-stock').textContent = `剩余 ${this.state.remaining} / ${this.state.capacity}`;
       $('immersive-fibers').textContent = $('fiber-label').textContent;
       $('immersive-smoke-status').textContent = $('smoke-status').textContent;
+      $('immersive-smoke-stock').textContent = `本盒余 ${this.state.smokeRemaining} / 20 根`;
       $('immersive-smoke-hint').textContent = this.state.cigarette.holding ? 'O 吐烟 · 烟雾向前散开' : this.state.cigarette.lit ? '可随时熄灭' : '可以独立点燃';
       $('immersive-auto').disabled = $('auto-chew').disabled;
       const auto = $('auto-chew').checked;

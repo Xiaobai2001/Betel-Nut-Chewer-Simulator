@@ -6,7 +6,14 @@ const { initializeSchema } = require('./store.cjs');
 const { configPath, loadConfig } = require('./config.cjs');
 async function setup() {
   const destination = configPath();
-  if (fs.existsSync(destination)) { loadConfig(); console.log('Existing configuration preserved.'); return; }
+  if (fs.existsSync(destination)) {
+    const existing = loadConfig();
+    if (!process.env.CHEW_ADMIN_PASSWORD) throw new Error('MySQL administrator credentials are required to apply schema upgrades.');
+    const connection = await mysql.createConnection({ host: existing.mysql.host, port: existing.mysql.port, user: process.env.CHEW_ADMIN_USER || 'root', password: process.env.CHEW_ADMIN_PASSWORD, database: existing.mysql.database, charset: 'utf8mb4' });
+    try { await initializeSchema(connection); } finally { await connection.end(); }
+    console.log('Schema upgrade applied. Existing accounts, records and private configuration preserved.');
+    return;
+  }
   const origin = new URL(process.env.CHEW_PUBLIC_ORIGIN || 'http://localhost:8081');
   if (!['http:', 'https:'].includes(origin.protocol) || origin.origin !== process.env.CHEW_PUBLIC_ORIGIN) throw new Error('Set CHEW_PUBLIC_ORIGIN to the full public origin without a trailing slash.');
   const port = Number(process.env.CHEW_PORT || 8081);

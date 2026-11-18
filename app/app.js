@@ -3,7 +3,7 @@
   const $ = id => document.getElementById(id);
   const state = new Simulator();
   const visuals = new SimulatorVisuals($('chew-canvas'), $('smoke-canvas'), state);
-  let immersive = null; let account = null;
+  let immersive = null; let account = null; let progress = null; let smokeMs = 0;
   let currentPage = 'experience'; let autoTimer = null; let toastTimer = null;
   let breathTimer = null; let breathStart = 0; let breathPhase = -1;
   let sound = false; let audio = null; let background = false;
@@ -13,6 +13,8 @@
     clearTimeout(toastTimer); $('toast').textContent = message; $('toast').classList.add('visible');
     toastTimer = setTimeout(() => $('toast').classList.remove('visible'), 3000);
   }
+  function flushSmokeTime() { if (smokeMs > 0) { account?.record('burn', smokeMs); smokeMs = 0; } }
+  function track(type, value) { flushSmokeTime(); account?.record(type, value); }
   function playSound(kind) {
     if (!sound) return;
     try {
@@ -51,7 +53,8 @@
     $('auto-chew').disabled = !nut || wear >= 100;
     $('fiber-label').textContent = nut && nut.fibers > 0 ? '碎渣积累 ' + nut.fibers + '% · 可以吐渣' : '口中暂无碎渣';
     $('total-bites').textContent = state.totalBites; $('total-spits').textContent = state.spits; $('total-discarded').textContent = state.discarded;
-    $('remaining').textContent = state.remaining;
+    $('remaining').textContent = state.remaining; $('pack-capacity').textContent = state.capacity; $('smoke-stock').textContent = state.smokeRemaining;
+    $('smoke-box').style.setProperty('--box-fill', (state.smokeRemaining / 20 * 100) + '%');
     document.querySelectorAll('[data-pack]').forEach(button => { const selected = Number(button.dataset.pack) === state.pack; button.classList.toggle('selected', selected); button.setAttribute('aria-pressed', String(selected)); });
     $('light-cigarette').disabled = c.lit;
     $('light-cigarette').lastChild.textContent = c.used > 0 && !c.lit ? '再点一根' : '点一根';
@@ -62,14 +65,14 @@
   }
   function chew() {
     if (state.chew()) {
-      account?.record('chew');
+      track('chew');
       visuals.chew(); immersive?.scene?.chew(); playSound('chew');
       if (state.nut.wear === 100) { stopAuto(); toast('这颗已经完全纤维化，吐出后休息一下吧。'); }
       render();
     }
   }
   function primaryAction() {
-    if (!state.nut) { if (!state.remaining) { state.changePack(state.pack); account?.record('pack', state.pack); } if (state.take()) account?.record('take'); visuals.take(); render(); }
+    if (!state.nut) { if (!state.remaining) { state.changePack(state.pack); track('pack', state.pack); } if (state.take()) track('take'); visuals.take(); render(); }
     else chew();
   }
   $('chew-button').addEventListener('click', primaryAction);
@@ -77,27 +80,29 @@
     if (event.target.checked && state.nut && state.nut.wear < 100) { stopAuto(); $('auto-chew').checked = true; chew(); if (state.nut.wear < 100) autoTimer = setInterval(chew, 760); }
     else stopAuto();
   });
-  $('spit-fibers').addEventListener('click', () => { if (state.spitFibers()) { account?.record('spit'); visuals.spit(false, state.nut); immersive?.scene?.spit(false, state.nut); playSound('spit'); render(); toast(immersive?.active ? '碎渣已向前吐出，落在地面上。' : '碎渣已吐入虚拟收集盘。'); } });
-  $('spit-nut').addEventListener('click', () => { const nut = state.nut; if (state.spitNut()) { account?.record('discard'); stopAuto(); visuals.spit(true, nut); immersive?.scene?.spit(true, nut); playSound('spit'); render(); toast('已吐出槟榔。要不要喝口水，歇一会？'); } });
-  function changePack(value) { if (state.changePack(value)) { account?.record('pack', value); render(); toast(`已换成 ${value} 档虚拟包装，内含 8 颗。${state.nut ? '口中这颗保留。' : ''}`); } }
+  $('spit-fibers').addEventListener('click', () => { if (state.spitFibers()) { track('spit'); visuals.spit(false, state.nut); immersive?.scene?.spit(false, state.nut); playSound('spit'); render(); toast(immersive?.active ? '碎渣已向前吐出，落在地面上。' : '碎渣已吐入虚拟收集盘。'); } });
+  $('spit-nut').addEventListener('click', () => { const nut = state.nut; if (state.spitNut()) { track('discard'); stopAuto(); visuals.spit(true, nut); immersive?.scene?.spit(true, nut); playSound('spit'); render(); toast('已吐出槟榔。要不要喝口水，歇一会？'); } });
+  function changePack(value) { if (state.changePack(value)) { track('pack', value); render(); toast(`已换成 ${value} 档虚拟包装，内含 ${state.capacity} 颗。${state.nut ? '口中这颗保留。' : ''}`); } }
   document.querySelectorAll('[data-pack]').forEach(button => button.addEventListener('click', () => changePack(Number(button.dataset.pack))));
   $('refill-pack').addEventListener('click', () => changePack(state.pack));
-  $('light-cigarette').addEventListener('click', () => { if (state.light()) { render(); toast('仅在屏幕里模拟。现实中建议戒槟榔、戒烟。'); } });
-  $('inhale').addEventListener('click', () => { if (state.inhale()) { visuals.inhale(); immersive?.scene?.inhale(); playSound('smoke'); render(); } });
-  $('exhale').addEventListener('click', () => { if (state.exhale()) { visuals.exhale(); immersive?.scene?.exhale(); playSound('smoke'); render(); } });
-  $('extinguish').addEventListener('click', () => { if (state.extinguish()) { render(); toast('已经熄灭。给自己一个清新的停顿。'); } });
+  $('light-cigarette').addEventListener('click', () => { if (state.light()) { track('light'); render(); toast('仅在屏幕里模拟。现实中建议戒槟榔、戒烟。'); } });
+  $('inhale').addEventListener('click', () => { if (state.inhale()) { track('inhale'); visuals.inhale(); immersive?.scene?.inhale(); playSound('smoke'); render(); } });
+  $('exhale').addEventListener('click', () => { if (state.exhale()) { track('exhale'); visuals.exhale(); immersive?.scene?.exhale(); playSound('smoke'); render(); } });
+  $('extinguish').addEventListener('click', () => { if (state.extinguish()) { track('extinguish'); render(); toast('已经熄灭。给自己一个清新的停顿。'); } });
   $('sound-toggle').addEventListener('click', () => { sound = !sound; try { localStorage.setItem('chew-sound', String(sound)); } catch {} updateSound(); toast(sound ? '音效已开启' : '音效已关闭'); if (sound) playSound('chew'); });
   function showPage(name) {
     if (immersive?.active) immersive.close();
-    if (!['experience', 'pause', 'guide'].includes(name)) name = 'experience';
-    stopAuto(); if (currentPage === 'pause' && name !== 'pause') stopBreath(false);
+    if (!['experience', 'pause', 'guide', 'progress'].includes(name)) name = 'experience';
+    stopAuto(); flushSmokeTime(); if (currentPage === 'pause' && name !== 'pause') stopBreath(false);
     currentPage = name;
     document.querySelectorAll('.page').forEach(page => page.classList.toggle('active-page', page.id === name));
     document.querySelectorAll('[data-page]').forEach(button => { const selected = button.dataset.page === name; button.classList.toggle('active', selected); if (selected) button.setAttribute('aria-current', 'page'); else button.removeAttribute('aria-current'); });
-    $('page-label').textContent = { experience: '模拟体验', pause: '放下练习', guide: '使用说明' }[name];
+    $('page-label').textContent = { experience: '模拟体验', pause: '放下练习', guide: '使用说明', progress: '记录与成就' }[name];
+    if (name === 'progress') account?.refresh();
     window.scrollTo({ top: 0, behavior: 'instant' });
   }
   document.querySelectorAll('[data-page]').forEach(button => button.addEventListener('click', () => showPage(button.dataset.page)));
+  $('account-progress').addEventListener('click', () => { $('account-dialog').close(); showPage('progress'); });
   document.querySelectorAll('[data-open-pause]').forEach(button => button.addEventListener('click', () => showPage('pause')));
   document.querySelector('.brand').addEventListener('click', event => { event.preventDefault(); showPage('experience'); });
   window.returnToSimulation = () => { if (immersive?.active) { immersive.close(); return true; } if (currentPage === 'experience') return false; showPage('experience'); return true; };
@@ -118,7 +123,7 @@
   }
   function updateBreath() {
     const elapsed = (performance.now() - breathStart) / 1000;
-    if (elapsed >= 60) { stopBreath(true); toast('一分钟练习完成。可以喝口水，活动一下。'); return; }
+    if (elapsed >= 60) { if (state.finishBreath()) track('breathDone'); stopBreath(true); toast('一分钟练习完成。可以喝口水，活动一下。'); return; }
     const phase = elapsed % 10 < 4 ? 0 : 1;
     if (phase !== breathPhase) {
       breathPhase = phase; $('breath-circle').style.transitionDuration = phase ? '6s' : '4s';
@@ -128,31 +133,37 @@
     $('breath-seconds').textContent = `还剩 ${Math.ceil(60 - elapsed)} 秒 · 第 ${Math.floor(elapsed / 10) + 1} / 6 轮`;
   }
   $('start-breath').addEventListener('click', () => {
-    stopAuto(); state.putDown(); account?.record('putDown'); render(); breathStart = performance.now(); breathPhase = -1;
+    stopAuto(); state.putDown(); track('putDown'); render(); breathStart = performance.now(); breathPhase = -1;
     $('start-breath').hidden = true; $('start-breath').style.display = 'none'; $('stop-breath').hidden = false;
     updateBreath(); breathTimer = setInterval(updateBreath, 200);
   });
   $('stop-breath').addEventListener('click', () => stopBreath(false));
-  function pauseApp() { background = true; stopAuto(); if (breathTimer) stopBreath(false); if (audio && audio.state === 'running') audio.suspend().catch(() => {}); }
+  function pauseApp() { flushSmokeTime(); background = true; stopAuto(); if (breathTimer) stopBreath(false); if (audio && audio.state === 'running') audio.suspend().catch(() => {}); }
   function resumeApp() { background = false; lastFrame = performance.now(); }
   document.addEventListener('visibilitychange', () => document.hidden ? pauseApp() : resumeApp());
-  window.addEventListener('blur', stopAuto);
+  window.addEventListener('blur', () => { stopAuto(); flushSmokeTime(); });
+  window.addEventListener('pagehide', flushSmokeTime);
   window.addEventListener('appPause', pauseApp); window.addEventListener('appResume', resumeApp);
   let lastFrame = performance.now(); let lastUI = 0;
   function animate(now) {
     const elapsed = Math.min(.1, Math.max(0, (now - lastFrame) / 1000)); lastFrame = now;
     if (!background && !document.hidden && currentPage === 'experience') {
-      state.burn(elapsed);
+      if (state.burn(elapsed)) { smokeMs += Math.round(elapsed * 1000); if (smokeMs >= 5000 || !state.cigarette.lit) flushSmokeTime(); }
       if (immersive.active) immersive.animate(now); else visuals.draw(now);
       if (now - lastUI > 400) { render(); lastUI = now; }
     }
     requestAnimationFrame(animate);
   }
   if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) navigator.serviceWorker.register('./sw.js').catch(() => {});
+  progress = new ProgressView({ getAccount: () => account, rest: () => { showPage('pause'); $('start-breath').click(); } });
   account = new AccountController({
+    beforeAccountChange: flushSmokeTime,
+    onUser: user => progress.setUser(user),
+    onStats: data => progress.render(data),
+    isProgress: () => currentPage === 'progress',
     warn: toast,
-    pause: () => { stopAuto(); render(); },
-    reset: () => { stopAuto(); stopBreath(false); Object.assign(state, new Simulator()); immersive?.scene?.clearFloor(); render(); }
+    pause: () => { stopAuto(); flushSmokeTime(); render(); },
+    reset: () => { smokeMs = 0; stopAuto(); stopBreath(false); Object.assign(state, new Simulator()); immersive?.scene?.clearFloor(); render(); }
   });
   updateSound(); render(); requestAnimationFrame(animate);
 })();

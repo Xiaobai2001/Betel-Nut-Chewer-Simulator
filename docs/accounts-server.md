@@ -1,11 +1,11 @@
-# 账号网页版 1.2.0：Windows Server + MySQL
+# 账号网页版 1.3.0：Windows Server + MySQL
 
-本次新增访客自行注册、登录、MySQL 持久统计，以及全屏底部操作区。仅发布网页版；旧 EXE / APK 仍是 1.1.1 离线版，没有账号或 OTA。
+本版包含访客注册、登录、槟榔与香烟用量、可视包装、戒除成就、现实打卡，以及全屏底部操作区。仅发布网页版；旧 EXE / APK 仍是 1.1.1 离线版，没有账号或 OTA。
 
 ## 最短部署步骤（全部在云服务器操作）
 
 1. 安装官方 **Node.js 24 LTS（Windows x64）**，安装后重新打开 PowerShell。服务器需要能访问 npm 下载依赖。已有 MySQL 8.0.33 可继续使用。
-2. 上传并完整解压 `ChewSimulator-1.2.0-WebAccounts.zip` 到 **`C:\ChewSimulator`**。目录内应直接看到 `app`、`server` 和 `Install-Accounts.ps1`。
+2. 上传并完整解压 `ChewSimulator-1.3.0-WebAccounts.zip` 到 **`C:\ChewSimulator`**。目录内应直接看到 `app`、`server` 和 `Install-Accounts.ps1`。
 3. 以管理员身份打开 **Windows PowerShell**，逐行运行：
 
 ```powershell
@@ -22,7 +22,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\Install-Accounts.ps1
 | Local MySQL port | 回车，默认 `3306` |
 | MySQL admin password | 你设置的数据库管理密码；输入时不显示字符 |
 
-脚本自动安装后台依赖，创建 `chew_simulator` 数据库和表、随机密码的专用数据库账号，保存私有配置，设置 Windows 开机任务并启动。账号表与统计表不会因重复安装而清空。网页注册的账号不是 MySQL 用户。
+脚本自动安装后台依赖，创建 `chew_simulator` 数据库和表、随机密码的专用数据库账号，保存私有配置，设置 Windows 开机任务并启动。账号表与统计表不会因重复安装而清空。已有 1.2.0 的服务器也要重新运行本脚本，输入管理凭据初始化新增表，不能只更新 HTML。网页注册的账号不是 MySQL 用户。
 
 4. 在**阿里云控制台**的实例安全组放行入方向 **TCP 8081**。Windows 防火墙由安装脚本设置。MySQL 3306 只供本机后台使用，不需要为此开放公网。
 5. 在你自己的电脑访问 **http://101.201.68.203:8081/**，点右上角“登录 / 注册”，自行注册后开始体验。
@@ -44,7 +44,7 @@ C:\ChewSimulator\
 └── README.md
 ```
 
-MySQL 数据库名称为 `chew_simulator`，表为 `chew_users`、`chew_sessions`、`chew_runs`、`chew_daily`。不修改 MySQL root 密码，不改其他数据库。实际数据库密码只存在 `.private/server.json`，文件夹限制为管理员、SYSTEM 和安装者访问。不要上传该目录到 GitHub，不要把整个安装目录设置为 IIS 根目录。
+MySQL 数据库名称为 `chew_simulator`，表为 `chew_users`、`chew_sessions`、`chew_runs`、`chew_daily`、`chew_activity_daily`、`chew_checkins`。不修改 MySQL root 密码，不改其他数据库。实际数据库密码只存在 `.private/server.json`，文件夹限制为管理员、SYSTEM 和安装者访问。不要上传该目录到 GitHub，不要把整个安装目录设置为 IIS 根目录。
 
 网站密码使用带随机盐的 scrypt 哈希；登录会话保留 14 天，可退出撤销。浏览器不保存明文密码。注册、登录和上传有基本 IP 限流（注册每小时 5 次，登录每 15 分钟 15 次）；重启会清空内存限流，不适合作为大规模公开服务的完整防滥用措施。
 
@@ -59,6 +59,8 @@ MySQL 数据库名称为 `chew_simulator`，表为 `chew_users`、`chew_sessions
 - 页面和标签页各自生成不同操作流水，服务器事务校验顺序并去重。错误或过期登录不把原账号记录写入新账号。
 - 这是虚拟操作统计，客户端仍可模拟合法操作请求，不提供防作弊排行。
 
+详细统计、包装折算和成就口径见随包的 `docs/progress.md`。现实打卡需联网保存；模拟操作继续支持离线暂存。
+
 ## 自动运行、停止和检查
 
 计划任务名：`ChewSimulatorAccounts`，以 SYSTEM 身份随 Windows 启动，退出 VNC 或关闭 PowerShell 不影响运行。失败后每分钟重试，最多 999 次。MySQL 本身也需要设置为“自动启动”；先确认正确的 MySQL 8.0 服务，不要改错其他版本。
@@ -71,7 +73,7 @@ Get-ScheduledTaskInfo -TaskName ChewSimulatorAccounts
 Invoke-RestMethod http://127.0.0.1:8081/api/health
 ```
 
-正常健康检查返回 `ok: true` 和 `version: 1.2.0`。用公网地址测试注册和登录；如果配置的是公网 URL，从 localhost 页面提交注册会被来源校验拒绝，这是预期行为。
+正常健康检查返回 `ok: true` 和 `version: 1.3.0`。用公网地址测试注册和登录；如果配置的是公网 URL，从 localhost 页面提交注册会被来源校验拒绝，这是预期行为。
 
 停止、启动：
 
@@ -87,10 +89,10 @@ Start-ScheduledTask -TaskName ChewSimulatorAccounts
 1. 使用 MySQL 自带备份功能备份 `chew_simulator`，并单独安全备份 `.private/server.json`。备份不能放在公开 app 目录中。
 2. 停止 `ChewSimulatorAccounts`，将旧 `app`、`server`、部署脚本备份到另一个私有目录。
 3. 把新版本解压覆盖到同一个 `C:\ChewSimulator`，**保留原 .private 目录和数据库**。
-4. 再次运行 `Install-Accounts.ps1`；它保留已有连接配置和账号数据，重新安装锁定依赖并启动。
+4. 再次运行 `Install-Accounts.ps1`；它保留已有连接配置和账号数据，重新安装锁定依赖，并再次提示输入 MySQL 管理凭据以创建新增表，然后启动。
 5. 验证登录、累计统计、全屏按钮以及手机操作。
 
-不要删除再创建数据库，不要把服务迁到新目录而漏掉原私有配置。1.2.0 是首次账号版本，后续有表结构升级时必须随版本提供迁移说明。本次初始化使用 CREATE TABLE IF NOT EXISTS，不会自动迁移未知的旧表结构。
+不要删除再创建数据库，不要把服务迁到新目录而漏掉原私有配置。1.3.0 以 CREATE TABLE IF NOT EXISTS 新增活动统计和现实打卡两张表，不修改或清空 1.2.0 原表。旧待上传事件仍按旧版每包 8 颗重放；新事件采用新容量。旧版没有香烟、呼吸或打卡记录，不会凭空补齐。重复运行迁移不会重复累计数据。
 
 需要退回纯静态体验时停止新任务，再使用原 8080 网站。旧网站不展示账号统计；MySQL 数据仍保留。
 

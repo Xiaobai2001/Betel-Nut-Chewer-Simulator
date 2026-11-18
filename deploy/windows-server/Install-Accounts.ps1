@@ -22,10 +22,12 @@ if (-not (Test-Path -LiteralPath $configPath)) {
 }
 Push-Location $root
 try {
+  if ($existing) { Stop-ScheduledTask -TaskName $taskName }
   & $npm ci --prefix server --omit=dev --no-audit --no-fund
   if ($LASTEXITCODE -ne 0) { throw 'Dependency installation failed. Check the server Internet connection and retry.' }
-  if (-not (Test-Path -LiteralPath $configPath)) {
-    if (-not $PublicOrigin) { $PublicOrigin = Read-Host 'Public URL without trailing slash (example http://101.201.68.203:8081)' }
+  & {
+    if ((-not (Test-Path -LiteralPath $configPath)) -and (-not $PublicOrigin)) { $PublicOrigin = Read-Host 'Public URL without trailing slash (example http://101.201.68.203:8081)' }
+    if (Test-Path -LiteralPath $configPath) { Write-Host 'Upgrading database schema. Existing accounts and private configuration will be preserved.' }
     $adminUser = Read-Host 'MySQL admin user (Enter = root)'
     if (-not $adminUser) { $adminUser = 'root' }
     $dbPort = Read-Host 'Local MySQL port (Enter = 3306)'

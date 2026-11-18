@@ -12,11 +12,13 @@
   <link rel="stylesheet" href="styles.css">
   <link rel="stylesheet" href="immersive.css">
   <link rel="stylesheet" href="account.css">
+  <link rel="stylesheet" href="progress.css">
   <script src="model.js" defer></script>
   <script src="visuals.js" defer></script>
   <script src="immersive-scene.js" defer></script>
   <script src="immersive.js" defer></script>
   <script src="account.js" defer></script>
+  <script src="progress.js" defer></script>
   <script src="app.js" defer></script>
 </head>
 <body>
@@ -42,10 +44,11 @@
     <nav aria-label="主导航">
       <button class="nav-item active" data-page="experience" aria-current="page"><svg><use href="#i-grid"/></svg>模拟体验<span class="nav-dot"></span></button>
       <button class="nav-item" data-page="pause"><svg><use href="#i-heart"/></svg>放下练习<span class="new-label">呼吸</span></button>
+      <button class="nav-item" data-page="progress"><svg><use href="#i-leaf"/></svg>记录与成就</button>
       <button class="nav-item" data-page="guide"><svg><use href="#i-info"/></svg>使用说明</button>
     </nav>
     <div class="sidebar-note"><span class="mini-leaf">✳</span><h3>好奇留在这里，<br>健康留给自己。</h3><p>一次虚拟体验，<br>也是一次放下的机会。</p><button class="text-link" data-open-pause>休息一小会 <svg><use href="#i-arrow"/></svg></button></div>
-    <div class="sidebar-footer"><span class="online-dot"></span>纯模拟 · 无真实消费<small>VIRTUAL EXPERIENCE　 /　 V1.2.0</small></div>
+    <div class="sidebar-footer"><span class="online-dot"></span>纯模拟 · 无真实消费<small>VIRTUAL EXPERIENCE　 /　 V1.3.0</small></div>
   </aside>
 
   <main>
@@ -66,11 +69,11 @@
         </div>
         <div class="side-column">
           <section class="pack-panel card"><div class="card-heading"><h2><span class="section-number">02</span>换一包</h2><span class="subtle-tag">虚拟包装</span></div><p class="card-description">选一种外观，开始你的模拟。</p><div class="pack-options" role="group" aria-label="虚拟包装档位">
-            <button class="pack-option selected" data-pack="50" aria-pressed="true"><span class="pack-art pack-green"><span class="pack-seal"></span><span class="pack-brand">青 椰</span><span class="pack-leaf">❧</span><span class="pack-number">50</span><span class="pack-detail">VIRTUAL ONLY</span></span><span class="pack-price">¥ 50</span><span class="pack-name">青椰绿</span><span class="pack-selected"><svg><use href="#i-check"/></svg></span></button>
-            <button class="pack-option" data-pack="100" aria-pressed="false"><span class="pack-art pack-gold"><span class="pack-seal"></span><span class="pack-brand">秋 山</span><span class="pack-leaf">❧</span><span class="pack-number">100</span><span class="pack-detail">VIRTUAL ONLY</span></span><span class="pack-price">¥ 100</span><span class="pack-name">秋山金</span><span class="pack-selected"><svg><use href="#i-check"/></svg></span></button>
-            <button class="pack-option" data-pack="200" aria-pressed="false"><span class="pack-art pack-black"><span class="pack-seal"></span><span class="pack-brand">夜 岩</span><span class="pack-leaf">❧</span><span class="pack-number">200</span><span class="pack-detail">VIRTUAL ONLY</span></span><span class="pack-price">¥ 200</span><span class="pack-name">夜岩黑</span><span class="pack-selected"><svg><use href="#i-check"/></svg></span></button>
-          </div><div class="pack-stock"><span>当前包剩余 <strong id="remaining">7</strong> / 8 颗</span><button id="refill-pack">重新换包 <span>↻</span></button></div><p class="tiny-note">仅展示虚拟档位，无购买功能。各档位均不安全。</p></section>
-          <section class="smoke-panel card"><div class="card-heading"><h2><span class="section-number">03</span>点一根？</h2><span class="subtle-tag">可选模拟</span></div><div class="smoke-visual"><canvas id="smoke-canvas" aria-label="虚拟香烟与烟雾动画" role="img"></canvas><span id="smoke-status">未点燃</span></div><div class="smoke-controls"><button id="light-cigarette" title="点一根 / 再点一根 (L)" class="dark-button"><svg><use href="#i-fire"/></svg>点一根</button><button id="inhale" title="吸一口 (I)" class="secondary-button">吸一口</button><button id="exhale" title="吐烟 (O)" class="secondary-button">吐烟</button></div><div class="smoke-footer"><span id="smoke-hint">模拟烟雾，不点燃真实香烟</span><button id="extinguish" title="熄灭 (X)">熄灭</button></div><div class="smoke-warning"><svg><use href="#i-info"/></svg>槟榔与烟草并用，会增加健康风险。</div></section>
+            <button class="pack-option selected" data-pack="50" aria-pressed="true"><span class="pack-art pack-green"><span class="pack-seal"></span><span class="pack-brand">青 椰</span><span class="pack-leaf">❧</span><span class="pack-number">50</span><span class="pack-detail">VIRTUAL ONLY</span></span><span class="pack-price">¥ 50</span><span class="pack-name">青椰绿 · 10 颗</span><span class="pack-selected"><svg><use href="#i-check"/></svg></span></button>
+            <button class="pack-option" data-pack="100" aria-pressed="false"><span class="pack-art pack-gold"><span class="pack-seal"></span><span class="pack-brand">秋 山</span><span class="pack-leaf">❧</span><span class="pack-number">100</span><span class="pack-detail">VIRTUAL ONLY</span></span><span class="pack-price">¥ 100</span><span class="pack-name">秋山金 · 15 颗</span><span class="pack-selected"><svg><use href="#i-check"/></svg></span></button>
+            <button class="pack-option" data-pack="200" aria-pressed="false"><span class="pack-art pack-black"><span class="pack-seal"></span><span class="pack-brand">夜 岩</span><span class="pack-leaf">❧</span><span class="pack-number">200</span><span class="pack-detail">VIRTUAL ONLY</span></span><span class="pack-price">¥ 200</span><span class="pack-name">夜岩黑 · 20 颗</span><span class="pack-selected"><svg><use href="#i-check"/></svg></span></button>
+          </div><div class="pack-stock"><span>当前包剩余 <strong id="remaining">9</strong> / <span id="pack-capacity">10</span> 颗</span><button id="refill-pack">重新换包 <span>↻</span></button></div><p class="tiny-note">仅展示虚拟档位，无购买功能。各档位均不安全。</p></section>
+          <section class="smoke-panel card"><div class="card-heading"><h2><span class="section-number">03</span>点一根？</h2><span class="subtle-tag">可选模拟</span></div><div class="smoke-visual"><canvas id="smoke-canvas" aria-label="虚拟香烟与烟雾动画" role="img"></canvas><span id="smoke-status">未点燃</span></div><div class="smoke-controls"><button id="light-cigarette" title="点一根 / 再点一根 (L)" class="dark-button"><svg><use href="#i-fire"/></svg>点一根</button><button id="inhale" title="吸一口 (I)" class="secondary-button">吸一口</button><button id="exhale" title="吐烟 (O)" class="secondary-button">吐烟</button></div><div class="smoke-footer"><span id="smoke-hint">模拟烟雾，不点燃真实香烟</span><button id="extinguish" title="熄灭 (X)">熄灭</button></div><div class="smoke-box-stock"><span id="smoke-box" class="live-smoke-box" aria-hidden="true"><i></i>20</span><span>本盒剩余 <strong id="smoke-stock">20</strong> / 20 根<small>用完后再次点燃会自动取新盒 · 可随时放下</small></span></div><div class="smoke-warning"><svg><use href="#i-info"/></svg>槟榔与烟草并用，会增加健康风险。</div></section>
           <button class="pause-card" data-open-pause><span class="pause-icon"><svg><use href="#i-cup"/></svg></span><span><strong>这一口，换成深呼吸。</strong><small>放下屏幕里的习惯，给自己一分钟。</small></span><svg><use href="#i-arrow"/></svg></button>
         </div>
       </div>
@@ -85,9 +88,47 @@
 
     <section id="guide" class="page">
       <div class="page-heading"><div><div class="eyebrow">A SMALL GUIDE TO YOUR VIRTUAL SPACE.</div><h1>把体验留在屏幕里。</h1><p>所有动作都是视觉模拟，没有真实购买，也没有联网账号。</p></div></div>
-      <div class="guide-grid"><article class="card"><span class="tip-number">01 / 咀嚼</span><h2>看见每一口的变化</h2><p>点击“嚼一口”，或在模拟页面按空格。也可以开启自动咀嚼。每一口都会压扁槟榔、加深颜色并增加纤维，15 口后完全纤维化并自动停止。</p><p>“吐渣”清除碎纤维；“吐出槟榔”移除整颗，再点击“取一颗”继续。离开模拟页面时会暂停自动咀嚼。</p></article><article class="card"><span class="tip-number">02 / 包装</span><h2>三种外观，一样的提醒</h2><p>50、100、200 是虚拟档位，分别对应青椰绿、秋山金、夜岩黑。切换包装后，新包有 8 颗，口中已有的槟榔会保留。</p><p>价格和包装不代表安全性。本模拟不代表任何真实品牌，没有商品链接或支付功能。</p></article><article class="card"><span class="tip-number">03 / 烟雾</span><h2>点燃、吸入、吐出</h2><p>可以独立“点一根”，无需嘴里有槟榔。抽完或熄灭后可以再点一根。点燃后选择“吸一口”，再“吐烟”，烟雾会扩散消失；香烟会随时间和吸入逐渐变短。</p><p>可随时点击“熄灭”。槟榔与烟草并用会增加健康风险，不建议在现实中模仿。</p></article><article class="card"><span class="tip-number">04 / 本地</span><h2>离线，也能用</h2><p>网页版可直接打开 index.html；Windows 版双击 EXE；安卓版安装 APK 后打开。核心功能无需网络，不请求相机、麦克风或定位权限。</p><p>访客会话计数关闭后重置。账号网页版支持自行注册，登录后统计保存到服务器，断网操作暂存在本机；离线 EXE / APK 暂不支持账号。音效默认关闭。</p></article></div>
+      <div class="guide-grid"><article class="card"><span class="tip-number">01 / 咀嚼</span><h2>看见每一口的变化</h2><p>点击“嚼一口”，或在模拟页面按空格。也可以开启自动咀嚼。每一口都会压扁槟榔、加深颜色并增加纤维，15 口后完全纤维化并自动停止。</p><p>“吐渣”清除碎纤维；“吐出槟榔”移除整颗，再点击“取一颗”继续。离开模拟页面时会暂停自动咀嚼。</p></article><article class="card"><span class="tip-number">02 / 包装</span><h2>三种外观，一样的提醒</h2><p>50、100、200 是虚拟档位，分别对应青椰绿、秋山金、夜岩黑。50 档每包 10 颗，100 档每包 15 颗，200 档每包 20 颗。切换包装后，口中已有的槟榔会保留。</p><p>价格和包装不代表安全性。本模拟不代表任何真实品牌，没有商品链接或支付功能。</p></article><article class="card"><span class="tip-number">03 / 烟雾</span><h2>点燃、吸入、吐出</h2><p>可以独立“点一根”，无需嘴里有槟榔。抽完或熄灭后可以再点一根。点燃后选择“吸一口”，再“吐烟”，烟雾会扩散消失；香烟会随时间和吸入逐渐变短。</p><p>可随时点击“熄灭”。槟榔与烟草并用会增加健康风险，不建议在现实中模仿。</p></article><article class="card"><span class="tip-number">04 / 本地</span><h2>离线，也能用</h2><p>网页版可直接打开 index.html；Windows 版双击 EXE；安卓版安装 APK 后打开。核心功能无需网络，不请求相机、麦克风或定位权限。</p><p>访客会话计数关闭后重置。账号网页版支持自行注册，登录后统计保存到服务器，断网操作暂存在本机；离线 EXE / APK 暂不支持账号。音效默认关闭。</p></article></div>
       <article class="keyboard-guide card"><h2>全屏沉浸 · 把这一刻放大</h2><p>点击咀嚼区右上角“全屏沉浸”，进入明亮奶油白的第一人称画面，全屏不再显示嘴巴和牙齿。槟榔和香烟在同一场景中，鼠标或手指拖动旋转，滚轮或滑块缩放。吐渣会从视角前方向外飞出、下落，吐出的整颗还会弹跳；残渣保留在地面，可一键清理。</p><div class="keyboard-chips"><span><kbd>F</kbd>进入 / 退出沉浸</span><span><kbd>Space</kbd>嚼 / 取一颗</span><span><kbd>Q</kbd>吐渣</span><span><kbd>G</kbd>吐出整颗</span><span><kbd>L</kbd>点 / 再点一根</span><span><kbd>I</kbd>吸一口</span><span><kbd>O</kbd>吐烟</span><span><kbd>X</kbd>熄灭</span><span><kbd>A</kbd>自动咀嚼</span><span><kbd>1 / 2 / 3</kbd>50 / 100 / 200 换包</span><span><kbd>R</kbd>旋转与缩放复位</span><span><kbd>方向键</kbd>旋转微调</span><span><kbd>Esc</kbd>退出沉浸</span></div><p>快捷键在模拟页面有效，输入框与滑块获得焦点时不接管输入。手机使用屏幕按钮。不支持系统全屏的浏览器会铺满当前页面；不支持 WebGL 的设备使用兼容画面。图形均为虚拟示意。</p></article>
       <article class="source-note card"><svg><use href="#i-info"/></svg><div><h2>关于健康提醒</h2><p>世界卫生组织国际癌症研究机构（IARC）已将槟榔列为对人类致癌的物质；不含烟草的槟榔同样存在风险。烟草使用也具有明确健康危害。最安全的选择是不用槟榔、不吸烟。</p><small>参考：IARC Monographs, Volume 85（Betel-quid and Areca-nut Chewing），WHO Tobacco fact sheet。动画是示意，不模拟真实生理反应。</small></div></article>
+    </section>
+    <section id="progress" class="page">
+      <div class="journal-heading"><div><div class="eyebrow">PERSONAL JOURNAL / ONE DAY AT A TIME</div><h1>每一点减少，都算数。</h1><p>看见模拟用量，把现实中的选择留给健康。</p></div><span class="journal-flower" aria-hidden="true">✳</span></div>
+      <div id="progress-guest" class="journal-guest card"><svg><use href="#i-leaf"/></svg><h2>这是属于你的记录。</h2><p>登录后，包装足迹、戒除打卡和成就都会同步到账号。</p><button id="progress-login" class="primary-button">登录 / 注册</button></div>
+      <div id="progress-content" hidden>
+        <div class="journal-toolbar"><div class="journal-tabs" role="group" aria-label="模拟统计范围"><button data-progress-scope="total" aria-pressed="true">累计模拟</button><button data-progress-scope="today" aria-pressed="false">今日模拟</button></div><span id="progress-sync" role="status">等待同步…</span><button id="progress-refresh">同步记录 ↻</button></div>
+        <p id="progress-error" class="account-error" role="status"></p>
+        <div class="journal-metrics"><article><span>嚼过槟榔</span><strong id="journal-nuts">0<small>颗</small></strong><p id="journal-completed">其中嚼完 0 颗</p></article><article><span>咀嚼次数</span><strong id="journal-bites">0<small>次</small></strong><p>每一次有效咀嚼</p></article><article><span>点燃香烟</span><strong id="journal-cigarettes">0<small>根</small></strong><p id="journal-smoked">吸过 0 根 · 抽完 0 根</p></article><article class="rest-metric"><span>留给自己的停顿</span><strong id="journal-breaths">0<small>分钟</small></strong><p id="journal-early">提前放下 0 次</p></article></div>
+        <div class="journal-section-title"><div><span class="eyebrow">THE TRACE WE LEAVE</span><h2>消耗，看得见。</h2></div><span id="journal-package-total"></span></div>
+        <p class="journal-caption">包装按嚼过的颗数、点燃的根数折合展示。反复换包不会增加消耗；这些都是虚拟模拟记录。</p>
+        <div id="package-shelf" class="package-shelf"></div>
+        <p id="legacy-note" class="journal-caption" hidden></p>
+        <div id="daily-observations" class="daily-observations"></div>
+        <div class="recovery-layout">
+          <section class="recovery-card card">
+            <div class="journal-section-title"><div><span class="eyebrow">IN REAL LIFE / YOUR OWN WORD</span><h2>把今天，留给健康。</h2></div><span class="reality-label">现实打卡</span></div>
+            <p class="journal-caption">由你确认现实中的一天。没打开模拟器、没打卡，都不会被算作成功戒除。</p>
+            <form id="checkin-form">
+              <label class="checkin-date">记录日期 <select id="checkin-day" aria-label="打卡日期"></select></label>
+              <label class="checkin-choice"><input id="checkin-nut" type="checkbox"><span><strong>这一天，现实中没嚼槟榔</strong><small>给口腔一个真正的休息</small></span><svg><use href="#i-leaf"/></svg></label>
+              <label class="checkin-choice"><input id="checkin-smoke" type="checkbox"><span><strong>这一天，现实中没吸烟</strong><small>把下一口换成一口清新空气</small></span><svg><use href="#i-wind"/></svg></label>
+              <button id="checkin-save" class="primary-button" type="submit">保存这一天</button><p id="checkin-feedback" class="journal-caption" role="status"></p>
+            </form>
+            <div id="checkin-calendar" class="checkin-calendar" aria-label="近七天现实打卡"></div>
+            <p class="journal-caption">可更正最近 7 天。取消勾选表示撤回该项确认，连续天数与成就会重新计算。今天晚些时候情况变化，也可以回来修改。</p>
+          </section>
+          <aside class="recovery-side">
+            <section class="streak-card card"><span class="eyebrow">A GENTLE CONTINUITY</span><h2>一步一步，慢慢来。</h2><div id="reality-streaks"></div><p class="journal-caption">连续天数截至最近一次确认的今天或昨天。中断后仍保留历史最佳记录，不必因为一次中断否定之前的努力。</p></section>
+            <button id="progress-breath" class="journal-breath"><svg><use href="#i-cup"/></svg><span><strong>想嚼、想抽时，先停一分钟。</strong><small>做一次呼吸练习 →</small></span></button>
+          </aside>
+        </div>
+        <div class="journal-section-title"><div><span class="eyebrow">SMALL CHOICES, REAL PROGRESS</span><h2>值得记住的小改变。</h2></div><span id="achievement-count"></span></div>
+        <p class="journal-caption">成就记录觉察、主动放下与现实打卡。用量提醒没有奖励，也不是需要完成的挑战。</p>
+        <div id="achievement-grid" class="achievement-grid"></div>
+        <div class="journal-section-title"><div><span class="eyebrow">YOUR LAST SEVEN DAYS</span><h2>近七天的模拟足迹。</h2></div><span>北京时间</span></div>
+        <div class="stats-table-wrap journal-history"><table class="stats-table"><thead><tr><th>日期</th><th>嚼过 / 颗</th><th>嚼完 / 颗</th><th>点燃 / 根</th><th>吸烟 / 口</th><th>休息 / 次</th></tr></thead><tbody id="journal-days"></tbody></table></div>
+        <p class="journal-caption journal-footnote">模拟记录不代表真实摄入；现实打卡来自个人确认，不是医学验证。槟榔致癌，吸烟有害健康。遇到戒除困难，可以寻求专业支持。</p>
+      </div>
     </section>
   </main>
   <section id="immersive" role="dialog" aria-modal="true" aria-labelledby="immersive-title" hidden>
@@ -102,8 +143,8 @@
       </div>
       <aside class="immersive-rail">
         <section class="immersive-control-card"><div class="immersive-card-title"><span>01 / 咀嚼</span><span id="immersive-pack-label">50 档</span></div><h3>每一口，都看得见。</h3><div class="immersive-progress"><div id="immersive-progress-bar"></div></div><button data-action="chew-button" class="immersive-primary"><span>嚼一口</span><kbd>Space</kbd></button><div class="immersive-action-row"><button data-action="spit-fibers">吐渣 <kbd>Q</kbd></button><button data-action="spit-nut">吐出整颗 <kbd>G</kbd></button></div><button id="immersive-auto" class="immersive-auto" aria-pressed="false"><span>○ 自动咀嚼</span><kbd>A</kbd></button><p id="immersive-fibers">口中暂无碎渣</p></section>
-        <section class="immersive-control-card"><div class="immersive-card-title"><span>02 / 烟雾</span><span id="immersive-smoke-status">未点燃</span></div><h3>烟在身旁，随时放下。</h3><button data-action="light-cigarette" class="immersive-light"><span>点一根</span><kbd>L</kbd></button><div class="immersive-action-row"><button data-action="inhale">吸一口 <kbd>I</kbd></button><button data-action="exhale">吐烟 <kbd>O</kbd></button></div><div class="immersive-smoke-bottom"><span id="immersive-smoke-hint">模拟烟雾</span><button data-action="extinguish">熄灭 <kbd>X</kbd></button></div></section>
-        <section class="immersive-pack-card"><div class="immersive-card-title"><span>03 / 换包</span><span id="immersive-stock">剩余 7 / 8</span></div><div class="immersive-packs"><button data-immersive-pack="50" aria-pressed="true">50<small>青椰绿</small><kbd>1</kbd></button><button data-immersive-pack="100" aria-pressed="false">100<small>秋山金</small><kbd>2</kbd></button><button data-immersive-pack="200" aria-pressed="false">200<small>夜岩黑</small><kbd>3</kbd></button></div><small class="immersive-pack-note">虚拟档位，无消费；价格不代表安全。</small></section>
+        <section class="immersive-control-card"><div class="immersive-card-title"><span>02 / 烟雾</span><span id="immersive-smoke-status">未点燃</span></div><h3>烟在身旁，随时放下。</h3><p id="immersive-smoke-stock">本盒余 20 / 20 根</p><button data-action="light-cigarette" class="immersive-light"><span>点一根</span><kbd>L</kbd></button><div class="immersive-action-row"><button data-action="inhale">吸一口 <kbd>I</kbd></button><button data-action="exhale">吐烟 <kbd>O</kbd></button></div><div class="immersive-smoke-bottom"><span id="immersive-smoke-hint">模拟烟雾</span><button data-action="extinguish">熄灭 <kbd>X</kbd></button></div></section>
+        <section class="immersive-pack-card"><div class="immersive-card-title"><span>03 / 换包</span><span id="immersive-stock">剩余 9 / 10</span></div><div class="immersive-packs"><button data-immersive-pack="50" aria-pressed="true">50<small>青椰绿 · 10 颗</small><kbd>1</kbd></button><button data-immersive-pack="100" aria-pressed="false">100<small>秋山金 · 15 颗</small><kbd>2</kbd></button><button data-immersive-pack="200" aria-pressed="false">200<small>夜岩黑 · 20 颗</small><kbd>3</kbd></button></div><small class="immersive-pack-note">虚拟档位，无消费；价格不代表安全。</small></section>
       </aside>
     </div>
     <footer class="immersive-footer"><span><svg><use href="#i-heart"/></svg>模拟就好。槟榔致癌，吸烟有害，建议戒除。</span><button id="immersive-rest">放下，呼吸一分钟 <svg><use href="#i-arrow"/></svg></button></footer>
@@ -120,18 +161,18 @@
         <p id="auth-error" class="account-error" role="status"></p>
         <button id="account-submit" type="submit">登录</button>
       </form>
-      <p class="account-note">访客可直接体验。登录后从新的模拟开始，之前的访客记录不计入账号。本站保存账号、昵称和模拟统计；不收集手机号。忘记密码请联系网站维护者。</p>
+      <p class="account-note">访客可直接体验。登录后从新的模拟开始，之前的访客记录不计入账号。本站保存账号、昵称、模拟统计和你自愿填写的现实戒除打卡；不收集手机号。忘记密码请联系网站维护者。</p>
     </div>
     <div id="account-stats" hidden>
       <div class="account-toolbar"><span id="stats-sync" role="status">正在读取记录…</span><button id="stats-refresh">同步并刷新</button><button id="account-logout">退出登录</button></div>
       <p id="stats-error" class="account-error" role="status"></p>
       <div id="stats-content" hidden>
-        <h3 class="stats-label">今日记录 <small>北京时间</small></h3>
+        <button id="account-progress" class="account-progress-link">打开包装足迹、现实打卡与成就 →</button><h3 class="stats-label">今日记录 <small>北京时间</small></h3>
         <div class="stats-grid"><div><strong id="stats-today-bites">0</strong><span>咀嚼次数</span></div><div><strong id="stats-today-nuts_started">0</strong><span>开始嚼的颗数</span></div><div><strong id="stats-today-nuts_completed">0</strong><span>嚼完的颗数</span></div><div><strong id="stats-today-discarded">0</strong><span>吐出的颗数</span></div></div>
         <h3 class="stats-label">累计记录 <small>仅当前账号</small></h3>
         <div class="stats-grid total"><div><strong id="stats-total-bites">0</strong><span>咀嚼次数</span></div><div><strong id="stats-total-nuts_started">0</strong><span>开始嚼的颗数</span></div><div><strong id="stats-total-nuts_completed">0</strong><span>嚼完的颗数</span></div><div><strong id="stats-total-discarded">0</strong><span>吐出的颗数</span></div></div>
         <h3 class="stats-label">近 7 天 <small>虚拟体验记录</small></h3>
-        <div class="stats-table-wrap"><table class="stats-table"><thead><tr><th>日期</th><th>咀嚼次数</th><th>开始颗数</th><th>完成颗数</th></tr></thead><tbody id="stats-days"></tbody></table></div>
+        <div class="stats-table-wrap"><table class="stats-table"><thead><tr><th>日期</th><th>咀嚼次数</th><th>开始颗数</th><th>完成颗数</th><th>点燃根数</th></tr></thead><tbody id="stats-days"></tbody></table></div>
       </div>
       <p class="account-note">第一口记为开始 1 颗，形态达到 100% 记为嚼完 1 颗。刷新页面会重置当前模拟，已同步统计保留。断网记录补传时计入服务器收到当天；未同步前请勿清除浏览器数据。</p>
     </div>

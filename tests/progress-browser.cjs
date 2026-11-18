@@ -1,0 +1,87 @@
+const { chromium } = require('playwright');
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+module.exports = async function (origin) {
+  const browser = await chromium.launch({ channel: 'chrome', headless: true });
+  const context = await browser.newContext({ viewport: { width: 1440, height: 1000 }, serviceWorkers: 'block' });
+  const page = await context.newPage(), errors = []; page.on('pageerror', e => errors.push(e.message));
+  let blocked = false;
+  await context.route('**/api/events*', route => blocked ? route.abort() : route.continue());
+  const login = async username => {
+    await page.locator('#account-open').click();
+    await page.locator('[data-auth-mode="login"]').click();
+    await page.locator('#account-username').fill(username);
+    await page.locator('#account-password').fill(username === 'progress_tester' ? 'progress-test-password' : 'browser-test-password');
+    await page.locator('#account-submit').click();
+    await page.locator('#stats-content').waitFor({ state: 'visible' });
+    await page.locator('#account-progress').click(); await page.locator('#progress-content').waitFor({ state: 'visible' });
+  };
+  const smoke = async (complete = false) => {
+    await page.locator('[data-page="experience"]').click();
+    await page.evaluate(done => {
+      document.querySelector('#light-cigarette').click();
+      for (let i = 0; i < (done ? 8 : 1); i++) { document.querySelector('#inhale').click(); document.querySelector('#exhale').click(); }
+      if (!done) document.querySelector('#extinguish').click();
+    }, complete);
+    await page.locator('[data-page="progress"]').click();
+  };
+  const waitMetric = (id, value) => page.waitForFunction(({ id, value }) => document.getElementById(id).firstChild.textContent === String(value), { id, value });
+  try {
+    await page.goto(origin); await login('progress_tester');
+    assert.equal(await page.locator('.package-card').count(), 4);
+    assert.match(await page.locator('[data-tier="smoke"] h3').textContent(), /1 盒 \+ 2 根/);
+    assert.equal(await page.locator('#legacy-note').isVisible(), true);
+    assert.equal(await page.locator('[data-achievement="breath_one"]').getAttribute('class'), 'achievement-card unlocked');
+    assert.equal(await page.locator('[data-achievement="both_seven"]').getAttribute('class'), 'achievement-card');
+    const day = await page.locator('#checkin-day option').nth(3).getAttribute('value');
+    await page.locator('#checkin-day').selectOption(day);
+    await page.locator('#checkin-smoke').check(); await page.locator('#checkin-save').click();
+    await page.waitForFunction(() => document.querySelector('[data-achievement="both_seven"]').classList.contains('unlocked'));
+    await page.locator('#checkin-smoke').uncheck(); await page.locator('#checkin-save').click();
+    await page.waitForFunction(() => !document.querySelector('[data-achievement="both_seven"]').classList.contains('unlocked'));
+    await page.locator('#checkin-smoke').check(); await page.locator('#checkin-save').click();
+    await page.waitForFunction(() => document.querySelector('[data-achievement="both_seven"]').classList.contains('unlocked'));
+    await smoke(); await waitMetric('journal-cigarettes', 23);
+    blocked = true; await smoke();
+    await page.reload(); await page.waitForFunction(() => document.querySelector('#account-open').textContent.includes('progress_tester'));
+    blocked = false;
+    await page.locator('[data-page="progress"]').click();
+    await page.locator('#progress-refresh').click(); await waitMetric('journal-cigarettes', 24);
+    await smoke(true); await waitMetric('journal-cigarettes', 25);
+    assert.match(await page.locator('#journal-smoked').textContent(), /抽完 3 根/);
+    await page.locator('[data-page="experience"]').click();
+    await page.locator('#chew-button').click();
+    await page.locator('[data-pack="200"]').click();
+    assert.equal(await page.locator('#pack-capacity').textContent(), '20');
+    await page.locator('#chew-button').click(); await page.locator('#spit-nut').click();
+    await page.locator('#chew-button').click(); await page.locator('#chew-button').click();
+    assert.equal(await page.locator('#remaining').textContent(), '19');
+    await page.locator('[data-page="progress"]').click(); await page.locator('#progress-refresh').click();
+    await waitMetric('journal-nuts', 55);
+    assert.match(await page.locator('[data-tier="50"] h3').textContent(), /1 袋 \+ 1 颗/);
+    assert.match(await page.locator('[data-tier="200"] h3').textContent(), /1 袋 \+ 1 颗/);
+    await page.clock.install();
+    await page.locator('#progress-breath').click(); await page.clock.runFor(60100);
+    assert.equal(await page.locator('#breath-instruction').textContent(), '做得很好');
+    await page.locator('[data-page="progress"]').click(); await page.locator('#progress-refresh').click();
+    await waitMetric('journal-breaths', 2);
+    await page.clock.runFor(3100);
+    fs.mkdirSync('.build/test-results', { recursive: true });
+    await page.screenshot({ path: '.build/test-results/progress-desktop.png', fullPage: true });
+    await page.locator('#package-shelf').screenshot({ path: '.build/test-results/progress-packages.png' });
+    await page.locator('.recovery-layout').screenshot({ path: '.build/test-results/progress-recovery.png' });
+    for (const width of [390, 360, 768]) {
+      await page.setViewportSize({ width, height: 844 });
+      assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, 'progress page horizontal overflow');
+      if (width === 390) await page.screenshot({ path: '.build/test-results/progress-phone.png', fullPage: true });
+    }
+    await page.locator('#account-open').click(); await page.locator('#account-logout').click();
+    await page.locator('#account-auth').waitFor({ state: 'visible' }); await page.locator('#account-close').click();
+    assert.equal(await page.locator('#progress-content').isHidden(), true); assert.equal(await page.locator('#package-shelf .package-card').count(), 0);
+    await login('browser_b');
+    await waitMetric('journal-cigarettes', 0);
+    assert.equal(await page.locator('[data-achievement="both_seven"]').getAttribute('class'), 'achievement-card');
+    assert.deepEqual(errors, []);
+    console.log('PASS: visible package shelf, real-life checkin correction, offline smoking replay after reload, smoking completion, cross-tier nut attribution, timed rest award, mobile layouts and cross-account privacy');
+  } finally { await browser.close(); }
+};

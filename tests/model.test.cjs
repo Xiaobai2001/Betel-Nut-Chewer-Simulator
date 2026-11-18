@@ -7,7 +7,7 @@ test('chewing progresses to full wear and then stops; spitting allows a fresh nu
   for (let i = 0; i < 15; i++) assert.equal(s.chew(), true);
   assert.equal(s.nut.wear, 100); assert.equal(s.chew(), false); assert.equal(s.totalBites, 15);
   assert.equal(s.spitNut(), true); assert.equal(s.chew(), false); assert.equal(s.spitNut(), false);
-  assert.equal(s.take(), true); assert.equal(s.nut.wear, 0); assert.equal(s.remaining, 6);
+  assert.equal(s.take(), true); assert.equal(s.nut.wear, 0); assert.equal(s.remaining, 8);
 });
 test('spitting fibers preserves wear and cannot repeat without more chewing', () => {
   const s = new Simulator(); assert.equal(s.spitFibers(), false); s.chew(); s.chew();
@@ -16,8 +16,8 @@ test('spitting fibers preserves wear and cannot repeat without more chewing', ()
 });
 test('pack changes retain the current nut and inventory cannot go below zero', () => {
   const s = new Simulator(); s.chew(); assert.equal(s.changePack(100), true);
-  assert.equal(s.nut.pack, 50); assert.equal(s.nut.bites, 1); assert.equal(s.remaining, 8);
-  s.spitNut(); for (let i = 0; i < 8; i++) { assert.equal(s.take(), true); assert.equal(s.nut.pack, 100); s.spitNut(); }
+  assert.equal(s.nut.pack, 50); assert.equal(s.nut.bites, 1); assert.equal(s.remaining, 15);
+  s.spitNut(); for (let i = 0; i < 15; i++) { assert.equal(s.take(), true); assert.equal(s.nut.pack, 100); s.spitNut(); }
   assert.equal(s.remaining, 0); assert.equal(s.take(), false); assert.equal(s.changePack(500), false);
 });
 test('smoking requires lighting and alternating inhale/exhale; last puff can be exhaled', () => {
@@ -25,7 +25,7 @@ test('smoking requires lighting and alternating inhale/exhale; last puff can be 
   s.spitNut(); assert.equal(s.light(), true); s.take();
   assert.equal(s.light(), false); assert.equal(s.inhale(), true); assert.equal(s.inhale(), false);
   assert.equal(s.exhale(), true); assert.equal(s.exhale(), false);
-  s.cigarette.used = .99; assert.equal(s.inhale(), true); assert.equal(s.cigarette.lit, false);
+  s.burn(85); assert.equal(s.inhale(), true); assert.equal(s.cigarette.lit, false);
   assert.equal(s.cigarette.holding, true); assert.equal(s.exhale(), true);
   assert.equal(s.light(), true); s.burn(101); assert.equal(s.cigarette.lit, false);
 });

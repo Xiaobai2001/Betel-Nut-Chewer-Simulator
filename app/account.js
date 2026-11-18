@@ -25,6 +25,7 @@
       this.checkSession();
       this.timer = setInterval(() => { if (this.user && !this.expired) this.flush(); }, 2500);
       this.sessionTimer = setInterval(() => { if (!document.hidden) this.checkSession(); }, 60000);
+      this.progressTimer = setInterval(() => { if (!document.hidden && this.actions.isProgress() && this.user && !this.expired) this.refresh(); }, 10000);
       window.addEventListener('online', () => this.checkSession());
       window.addEventListener('storage', event => { if (event.key === 'chew-auth-change') this.checkSession(); });
       document.addEventListener('visibilitychange', () => { if (document.hidden) this.flush(true); else this.checkSession(); });
@@ -47,9 +48,11 @@
     broadcast() { try { localStorage.setItem('chew-auth-change', uuid()); } catch {} }
     adopt(user) {
       const changed = this.user?.id !== user?.id;
+      if (changed) this.actions.beforeAccountChange();
       this.user = user; this.expired = false;
       if (changed) { this.runId = uuid(); this.seq = 0; this.actions.reset(); $('stats-content').hidden = true; }
       this.render();
+      this.actions.onUser(user);
     }
     async checkSession() {
       if (this.authBusy || this.checking) return;
@@ -57,7 +60,7 @@
       try {
         const result = await this.api('session');
         this.available = true; this.registration = result.registration;
-        if (!result.user && this.user) { this.expired = true; this.message('登录已失效，请重新登录；待同步记录仍保留。'); }
+        if (!result.user && this.user) { this.expired = true; this.actions.onUser(null); this.message('登录已失效，请重新登录；待同步记录仍保留。'); }
         else this.adopt(result.user);
         this.render();
         if (this.user && !this.expired) { await this.flush(); if (this.dialog.open) await this.loadStats(); }
@@ -83,7 +86,7 @@
       document.querySelectorAll('[data-auth-mode]').forEach(el => el.setAttribute('aria-pressed', String(el.dataset.authMode === this.mode)));
     }
     message(text) { $('auth-error').textContent = text; }
-    syncMessage(text) { $('stats-sync').textContent = text; }
+    syncMessage(text) { $('stats-sync').textContent = text; $('progress-sync').textContent = text; }
     async open() {
       this.actions.pause(); this.dialog.showModal();
       await this.checkSession();
@@ -104,7 +107,7 @@
     }
     record(type, value) {
       if (!this.user) return;
-      const event = { seq: ++this.seq, type }; if (value !== undefined) event.value = value;
+      const event = { seq: ++this.seq, type, protocol: 2 }; if (value !== undefined) event.value = value;
       const key = PREFIX + this.user.id + ':' + this.runId + ':' + event.seq;
       // Each event is immutable. Tabs may safely upload the same events; server acknowledgements remove only those keys.
       this.memory.set(key, event);
@@ -145,7 +148,8 @@
           for (let start = 0; start < records.length; start += 100) {
             if (this.user?.id !== userId || this.expired) return false;
             const batch = records.slice(start, start + 100);
-            const result = await this.api('events', { accountId: userId, runId, events: batch.map(item => item.event) }, keepalive);
+            const protocol = batch[0].event.protocol ?? 1;
+            const result = await this.api(protocol === 2 ? 'events-v2' : 'events', { accountId: userId, runId, protocol, events: batch.map(item => item.event) }, keepalive);
             for (const { key, event } of batch) if (event.seq <= result.ackSeq) {
               this.memory.delete(key);
               try { localStorage.removeItem(key); } catch { this.storageWarning = true; }
@@ -156,7 +160,7 @@
         return true;
       } catch (error) {
         if (this.user?.id === userId) {
-          if (error.status === 401 || error.status === 403) { this.expired = true; this.message('登录状态已变化，请重新登录后同步。'); this.render(); }
+          if (error.status === 401 || error.status === 403) { this.expired = true; this.actions.onUser(null); this.message('登录状态已变化，请重新登录后同步。'); this.render(); }
           this.syncMessage(this.storageWarning ? '同步失败且本机存储不可用，请保留页面重试。' : '尚未同步，记录保留在本机。' + (error.status ? ' ' + error.message : '联网后会自动重试。'));
         }
         return false;
@@ -168,14 +172,15 @@
       try {
         const data = await this.api('stats');
         if (this.user?.id !== id || data.accountId !== id) return;
+        this.actions.onStats(data);
         for (const scope of ['today', 'total']) for (const field of ['bites', 'nuts_started', 'nuts_completed', 'discarded']) $('stats-' + scope + '-' + field).textContent = Number(data[scope][field]).toLocaleString('zh-CN');
         const rows = data.daily.slice().reverse().map(day => {
           const tr = document.createElement('tr');
-          for (const value of [day.day, day.bites, day.nuts_started, day.nuts_completed]) { const td = document.createElement('td'); td.textContent = value; tr.append(td); }
+          for (const value of [day.day, day.bites, day.nuts_started, day.nuts_completed, day.cigarettes_lit]) { const td = document.createElement('td'); td.textContent = value; tr.append(td); }
           return tr;
         });
         $('stats-days').replaceChildren(...rows); $('stats-content').hidden = false; $('stats-error').textContent = '';
-      } catch (error) { $('stats-error').textContent = error.message; }
+      } catch (error) { $('stats-error').textContent = error.message; $('progress-error').textContent = error.message; if (!$('progress-guest').hidden && this.user) $('progress-guest').querySelector('p').textContent = error.message; }
     }
     async refresh() { await this.flush(); await this.loadStats(); }
     async logout() {
