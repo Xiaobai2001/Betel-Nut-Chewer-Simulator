@@ -20,3 +20,6 @@ __pycache__/
 .DS_Store
 Thumbs.db
 deploy/*.local.json
+
+# WeChat Developer Tools local preferences
+**/project.private.config.json

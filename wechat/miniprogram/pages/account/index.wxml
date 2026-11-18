@@ -1,0 +1,20 @@
+<view class="container">
+  <view class="eyebrow">A LITTLE SPACE FOR YOURSELF</view><view class="title">我的小小改变</view>
+  <view class="card"><view class="row"><image src="/assets/icon.png" class="avatar"/><view class="grow"><view class="section-title">{{user ? user.displayName : '访客体验'}}</view><view class="caption">{{user ? '与原网页账号共用记录' : '在本机，留下今天的记录'}}</view></view></view>
+    <block wx:if="{{user}}"><view class="divider"/><view class="caption">账号：{{user.username}}<view>ID：{{user.id}}</view><view>待同步操作：{{pending}} 条</view></view><view class="error" wx:if="{{expired}}">登录已过期。请在下方重新登录原账号，待同步记录会继续补传。</view><view class="action-row"><button class="primary" bindtap="sync" disabled="{{busy}}" loading="{{busy}}">同步记录</button><button class="quiet" bindtap="logout" disabled="{{busy}}">退出账号</button></view></block>
+    <view wx:else class="notice">访客记录只保存在当前设备，清理小程序数据后会丢失。登录账号后读取云记录，访客记录不自动合并。</view>
+  </view>
+  <view wx:if="{{!configured}}" class="notice">当前版本尚未连接云账号服务，可以直接体验模拟与本机打卡。运营者配置合法 HTTPS 接口并重新发布后，才能使用云账号。</view>
+  <view wx:if="{{!user || expired}}" class="card">
+    <view class="action-row"><button data-mode="login" bindtap="mode" class="{{mode === 'login' ? 'primary' : 'quiet'}}">原账号登录</button><button data-mode="register" bindtap="mode" class="{{mode === 'register' ? 'primary' : 'quiet'}}" disabled="{{!!user}}">注册账号</button></view>
+    <text class="form-label">账号</text><input value="{{username}}" data-field="username" bindinput="input" maxlength="24" placeholder="3–24 位字母、数字或下划线"/>
+    <text class="form-label">密码</text><input password value="{{password}}" data-field="password" bindinput="input" maxlength="128" placeholder="至少 8 位"/>
+    <block wx:if="{{mode === 'register'}}"><text class="form-label">昵称（选填）</text><input value="{{displayName}}" data-field="displayName" bindinput="input" maxlength="24" placeholder="给自己起个名字"/></block>
+    <button class="primary space" bindtap="submit" disabled="{{busy || !configured}}" loading="{{busy}}">{{mode === 'register' ? '注册并登录' : '登录并同步'}}</button>
+    <view class="caption space">使用本应用账号，不会自动读取微信身份。登录凭证仅用于连接你配置的账号服务。</view>
+  </view>
+  <view class="error" wx:if="{{error}}">{{error}}</view><view class="error" wx:if="{{syncError}}">{{syncError}}</view>
+  <view class="card"><view class="section-title">体验偏好</view><view class="switch-row"><text>咀嚼与吸吐音效</text><switch checked="{{sound}}" data-field="sound" bindchange="preference" color="#6a8351"/></view><view class="caption">默认关闭，遵循手机静音设置。</view><view class="switch-row"><text>减少动态效果</text><switch checked="{{reducedMotion}}" data-field="reducedMotion" bindchange="preference" color="#6a8351"/></view><view class="caption">降低场景动态并简化拆包动画。</view></view>
+  <view class="card"><view class="section-title">关于与帮助</view><button class="quiet" bindtap="guide">使用说明、健康提示与隐私说明</button><button class="quiet space" open-type="feedback">问题反馈</button><view class="caption space">版本 {{version}}</view></view>
+  <view class="footnote">把虚拟体验当作停顿的机会。如模拟勾起使用冲动，请关闭场景，选择呼吸练习或寻求支持。</view>
+</view>

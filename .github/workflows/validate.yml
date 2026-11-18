@@ -33,6 +33,7 @@ jobs:
       - run: npm ci --no-audit --no-fund
       - run: npm ci --prefix server --no-audit --no-fund
       - run: npm run build:scene
+      - run: node tools/build_wechat.cjs --check
       - run: npm test
       - run: npm run test:accounts
         env:
@@ -41,5 +42,6 @@ jobs:
       - run: python tools/prepare_publish.py --check-source
       - run: python tools/prepare_publish.py --web-only
       - run: python tools/prepare_publish.py --accounts
+      - run: python tools/package_wechat.py
       - run: node --check app/app.js && node --check app/immersive.js && node --check app/account.js && node --check app/progress.js && node --check server/setup.cjs
       - run: git diff --exit-code -- app/immersive-scene.js app/immersive-scene.js.LEGAL.txt app/THREE-LICENSE.txt

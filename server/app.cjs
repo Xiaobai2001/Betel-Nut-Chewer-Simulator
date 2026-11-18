@@ -28,14 +28,24 @@ async function createApp(pool, config) {
     res.set({ 'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'same-origin', 'X-Frame-Options': 'DENY' });
     next();
   });
+  // Native clients use explicit Bearer tokens, never browser cookies. The existing
+  // website keeps its same-origin / HttpOnly protection unchanged.
+  app.use((req, res, next) => {
+    if (/^\/api\/native(?:\/|$)/.test(req.url)) {
+      if (req.headers.origin || req.headers['sec-fetch-site']) return res.status(403).json({ error: '此接口仅供原生客户端使用。' });
+      req.nativeClient = true; req.url = req.url.replace(/^\/api\/native/, '/api');
+    }
+    next();
+  });
   app.use('/api', (req, res, next) => {
     res.set('Cache-Control', 'no-store');
     if (req.headers['sec-fetch-site'] === 'cross-site') return res.status(403).json({ error: '不允许跨站请求。' });
-    if (!['GET', 'HEAD'].includes(req.method) && (req.headers.origin !== publicOrigin || !req.is('application/json'))) return res.status(403).json({ error: '请从配置的网站地址提交请求。' });
+    if (!['GET', 'HEAD'].includes(req.method) && ((!req.nativeClient && req.headers.origin !== publicOrigin) || !req.is('application/json'))) return res.status(403).json({ error: '请从配置的网站地址提交请求。' });
     next();
   });
   app.use('/api', express.json({ limit: '32kb', strict: true }));
   const tokenFrom = req => {
+    if (req.nativeClient) return /^Bearer [A-Za-z0-9_-]{43}$/.test(req.headers.authorization || '') ? req.headers.authorization.slice(7) : null;
     const token = (req.headers.cookie || '').split(';').map(s => s.trim()).find(s => s.startsWith('chew_session='))?.slice(13);
     return /^[A-Za-z0-9_-]{43}$/.test(token || '') ? token : null;
   };
@@ -53,10 +63,11 @@ async function createApp(pool, config) {
     if (old) await pool.execute('DELETE FROM chew_sessions WHERE token_hash=?', [digestToken(old)]);
     const token = crypto.randomBytes(32).toString('base64url');
     await pool.execute('INSERT INTO chew_sessions (token_hash,user_id,expires_at) VALUES (?,?,DATE_ADD(UTC_TIMESTAMP(3),INTERVAL 14 DAY))', [digestToken(token), user.id]);
-    res.cookie('chew_session', token, { ...cookieOptions, maxAge: 14 * 86400000 });
+    if (req.nativeClient) req.issuedToken = token;
+    else res.cookie('chew_session', token, { ...cookieOptions, maxAge: 14 * 86400000 });
     return { id: publicId(user.id), username: user.username, displayName: user.display_name };
   }
-  app.get('/api/health', async (req, res) => { await pool.query('SELECT 1'); res.json({ ok: true, version: '1.4.0' }); });
+  app.get('/api/health', async (req, res) => { await pool.query('SELECT 1'); res.json({ ok: true, version: '1.5.0' }); });
   app.get('/api/session', authenticate, (req, res) => res.json({ user: req.user || null, registration: config.allowRegistration !== false }));
   app.post('/api/register', rateLimit('register', 5, 3600000), async (req, res) => {
     if (config.allowRegistration === false) return res.status(403).json({ error: '本站暂未开放注册。' });
@@ -65,7 +76,7 @@ async function createApp(pool, config) {
     try {
       const [result] = await pool.execute('INSERT INTO chew_users (username,display_name,password_hash) VALUES (?,?,?)', [input.username, input.displayName, await hashPassword(input.password)]);
       const user = await newSession(req, res, { id: result.insertId, username: input.username, display_name: input.displayName });
-      res.status(201).json({ user });
+      res.status(201).json({ user, ...(req.nativeClient ? { token: req.issuedToken } : {}) });
     } catch (error) { if (error.code === 'ER_DUP_ENTRY') return res.status(409).json({ error: '该账号已经注册，请登录或换一个账号。' }); throw error; }
   });
   app.post('/api/login', rateLimit('login', 15, 900000), async (req, res) => {
@@ -74,12 +85,13 @@ async function createApp(pool, config) {
     const [[user]] = await pool.execute('SELECT id,username,display_name,password_hash FROM chew_users WHERE username=?', [input.username]);
     const valid = await verifyPassword(input.password, user?.password_hash || dummyHash);
     if (!valid || !user) return res.status(401).json({ error: '账号或密码不正确。' });
-    res.json({ user: await newSession(req, res, user) });
+    const publicUser = await newSession(req, res, user);
+    res.json({ user: publicUser, ...(req.nativeClient ? { token: req.issuedToken } : {}) });
   });
   app.post('/api/logout', authenticate, async (req, res) => {
     if (req.user && !sameId(req.body?.accountId, req.user.id)) return res.status(403).json({ error: '登录账号已变化，请刷新页面。' });
     if (req.sessionToken) await pool.execute('DELETE FROM chew_sessions WHERE token_hash=?', [digestToken(req.sessionToken)]);
-    res.clearCookie('chew_session', cookieOptions); res.json({ ok: true });
+    if (!req.nativeClient) res.clearCookie('chew_session', cookieOptions); res.json({ ok: true });
   });
   app.get('/api/stats', authenticate, required, async (req, res) => res.json({ accountId: req.user.id, ...await getStats(pool, req.user.id) }));
   app.post('/api/savings', authenticate, required, rateLimit('savings', 30, 60000), async (req, res) => {

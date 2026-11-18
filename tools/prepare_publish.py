@@ -12,9 +12,9 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-SOURCE_DIRS = ('app', 'src', 'server', 'desktop', 'android', 'tools', 'tests', 'docs', 'deploy', '.github')
+SOURCE_DIRS = ('wechat', 'app', 'src', 'server', 'desktop', 'android', 'tools', 'tests', 'docs', 'deploy', '.github')
 SOURCE_FILES = ('README.md', '.gitignore', '.gitattributes', 'package.json', 'package-lock.json', 'requirements-build.txt', '打开网页版.html')
-FORBIDDEN_PARTS = {'.git', '.private', '.build', 'node_modules', 'signing', 'android-signing', '__pycache__'}
+FORBIDDEN_PARTS = {'project.private.config.json', '.git', '.private', '.build', 'node_modules', 'signing', 'android-signing', '__pycache__'}
 FORBIDDEN_SUFFIXES = {'.jks', '.keystore', '.p12', '.pfx', '.pem', '.key', '.pyc', '.exe', '.apk', '.zip'}
 
 def sha256(path: Path) -> str:
@@ -55,7 +55,7 @@ def write_zip(folder: Path, target: Path, prefix: str = '') -> None:
 def install_output(stage: Path, name: str) -> Path:
     delivery = (ROOT / '成品').resolve()
     target = delivery / name
-    if name not in {'云服务器部署', 'GitHub发布', '网页服务器部署', '账号网页版部署'} or target.parent != delivery or target.is_symlink():
+    if name not in {'云服务器部署', 'GitHub发布', '网页服务器部署', '账号网页版部署', '微信小程序'} or target.parent != delivery or target.is_symlink():
         raise RuntimeError('Unexpected publication directory')
     if target.exists():
         backup = ROOT / '.build/backups/publication' / (datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%S%fZ') + '-' + name)
@@ -86,7 +86,8 @@ def write_manifest(site: Path, version: str) -> None:
 def write_delivery_index() -> None:
     (ROOT / '成品/README.md').write_text('''# 交付文件导航
 
-- `账号网页版部署/`：当前 1.4.0，使用 Node.js + MySQL，上传 WebAccounts.zip 并按 README 操作；支持账号、统计、成就与现实戒除省钱估算。旧账号版请在新目录解压后运行 Update-Accounts.ps1。
+- `微信小程序/`：原生小程序源码与 ZIP，导入内层 `微信小程序源码/`；详细步骤见其中 README。
+- `账号网页版部署/`：当前 1.5.0，使用 Node.js + MySQL，上传 WebAccounts.zip 并按 README 操作；支持账号、统计、成就与现实戒除省钱估算。旧账号版请在新目录解压后运行 Update-Accounts.ps1。
 - `网页服务器部署/`：纯静态 IIS 包，仅访客模拟，不运行账号后台。
 - `本机运行/`：本机双击的 EXE、安卓 APK 和离线网页版。
 - `云服务器部署/`：包含网页和客户端安装包下载的完整部署包，留待后续使用。

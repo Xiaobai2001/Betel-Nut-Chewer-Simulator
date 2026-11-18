@@ -1,0 +1,21 @@
+{
+  "appid": "wxa4973df8756ffee9",
+  "projectname": "嚼槟榔模拟器",
+  "description": "虚拟模拟、现实戒除打卡与省钱记录",
+  "miniprogramRoot": "miniprogram/",
+  "compileType": "miniprogram",
+  "libVersion": "3.7.12",
+  "setting": {
+    "urlCheck": true,
+    "es6": true,
+    "enhance": true,
+    "postcss": true,
+    "minified": true,
+    "minifyWXSS": true,
+    "minifyWXML": true
+  },
+  "packOptions": {
+    "ignore": []
+  },
+  "condition": {}
+}

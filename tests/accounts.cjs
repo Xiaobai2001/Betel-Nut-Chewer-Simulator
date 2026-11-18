@@ -83,6 +83,8 @@ const { verifyPassword } = require('../server/security.cjs');
     console.log('PASS: database survives backend restart, logout/expiry revoke sessions, login throttling');
     await stop(); await start();
     await require('./savings-integration.cjs')(request, pool, { ...config, database });
+    await stop(); await start();
+    await require('./wechat-integration.cjs')(origin, pool, request);
     if (process.argv.includes('--browser')) {
       await stop(); await start();
       await require('./accounts-browser.cjs')(origin, pool);

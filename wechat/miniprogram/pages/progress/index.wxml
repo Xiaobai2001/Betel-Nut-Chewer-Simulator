@@ -1,0 +1,41 @@
+<view class="container">
+  <view class="eyebrow">ONE LESS, ONE STEP</view><view class="title">把改变，看得见</view>
+  <view class="subtitle">模拟用量与现实戒除分别记录。每一次停下来，都有意义。</view>
+  <view class="notice">{{guest ? '访客模式 · 仅保存在本机，不会合并到云账号。' : '原网页账号 · 数据同步到同一个账号。'}}<text wx:if="{{pending}}"> 待同步 {{pending}} 条</text></view>
+  <view wx:if="{{syncError}}" class="error">{{syncError}}</view><view wx:if="{{error}}" class="error">{{error}}</view>
+  <button class="quiet space" bindtap="refresh" loading="{{busy}}" disabled="{{busy}}">刷新记录</button>
+  <block wx:if="{{stats}}">
+    <view class="card"><view class="section-title">今天的虚拟用量</view><view class="two">
+      <view><view class="metric-value">{{stats.today.bites}}<text class="metric-unit">口</text></view><view class="metric-label">咀嚼次数</view></view>
+      <view><view class="metric-value">{{stats.today.nuts_started}}<text class="metric-unit">颗</text></view><view class="metric-label">嚼过槟榔</view></view>
+      <view><view class="metric-value">{{stats.today.cigarettes_lit}}<text class="metric-unit">根</text></view><view class="metric-label">点燃香烟</view></view>
+      <view><view class="metric-value">{{stats.today.puffs}}<text class="metric-unit">口</text></view><view class="metric-label">模拟吸烟</view></view>
+    </view><view class="divider"/><view class="caption">累计咀嚼 {{stats.total.bites}} 口 · 嚼过 {{stats.total.nuts_started}} 颗 · 嚼完 {{stats.total.nuts_completed}} 颗 · 累计点燃 {{stats.total.cigarettes_lit}} 根 · 吸过 {{stats.total.cigarettes_smoked}} 根 · 燃尽 {{stats.total.cigarettes_finished}} 根</view></view>
+    <view class="card"><view class="section-title">留下的包装</view><view class="caption">按实际开始嚼的颗数折合袋数；香烟按点燃数折合盒数。换包装本身不计入用量。</view>
+      <view class="package-row" wx:for="{{packs}}" wx:key="tier">
+        <view class="row between"><text>{{item.tier}} 档 · {{item.capacity}} 颗 / 袋</text><text class="pill">{{item.whole}} 袋 + {{item.remainder}} 颗</text></view>
+        <view class="package-shelf"><view class="mini-pack tier-{{item.tier}}" wx:for="{{item.icons}}" wx:for-item="icon" wx:key="*this"><text>{{item.tier}}</text><text class="mini-label">空袋</text></view><text wx:if="{{item.whole > 6}}" class="caption">共 {{item.whole}} 袋</text><text wx:if="{{!item.whole}}" class="caption">还没有完整空袋</text></view>
+        <view class="dots"><view wx:for="{{item.dots}}" wx:for-item="dot" wx:key="id" class="dot {{dot.filled ? 'filled' : ''}}"/></view>
+      </view>
+      <view class="package-row"><view class="row between"><text>香烟 · 20 根 / 盒</text><text class="pill">{{box.whole}} 盒 + {{box.remainder}} 根</text></view>
+        <view class="package-shelf"><view class="mini-box" wx:for="{{boxIcons}}" wx:key="*this">20<text class="mini-label">空盒</text></view><text wx:if="{{box.whole > 6}}" class="caption">共 {{box.whole}} 盒</text><text wx:if="{{!box.whole}}" class="caption">还没有完整空盒</text></view>
+        <view class="dots"><view wx:for="{{boxDots}}" wx:for-item="dot" wx:key="id" class="dot cigarette-dot {{dot.filled ? 'filled' : ''}}"/></view>
+      </view><view wx:if="{{stats.progress.unknownLegacyNuts}}" class="caption">旧版未记录档位的 {{stats.progress.unknownLegacyNuts}} 颗保留在总数中。</view>
+    </view>
+    <view class="card"><view class="section-title">现实戒除打卡</view><view class="caption">只记录现实情况，不根据模拟次数或是否打开页面推断。可更正最近 7 天，北京时间。</view>
+      <picker mode="date" value="{{day}}" start="{{firstDay}}" end="{{lastDay}}" bindchange="selectDay"><view class="picker space">{{day}}　⌄</view></picker>
+      <view class="switch-row"><text>这一天，现实中没嚼槟榔</text><switch checked="{{nutFree}}" data-field="nutFree" bindchange="switchCheck" color="#6a8351"/></view>
+      <view class="switch-row"><text>这一天，现实中没吸烟</text><switch checked="{{smokeFree}}" data-field="smokeFree" bindchange="switchCheck" color="#6a8351"/></view>
+      <button class="primary" bindtap="checkin" disabled="{{busy}}">{{recorded ? '更正这一天' : '保存这一天'}}</button>
+      <view class="notice">当前连续：不嚼槟榔 {{stats.progress.real.nut.current}} 天 · 不吸烟 {{stats.progress.real.smoke.current}} 天。未打卡日不计入。</view>
+      <view class="calendar"><view wx:for="{{stats.progress.calendar}}" wx:key="day" class="calendar-row"><text>{{item.day}}</text><text>{{item.recorded ? (item.nutFree ? '槟榔 ✓' : '槟榔 —') : '未打卡'}}</text><text wx:if="{{item.recorded}}">{{item.smokeFree ? '烟 ✓' : '烟 —'}}</text></view></view>
+    </view>
+    <view class="card"><view class="section-title">给自己留一点奖励</view><view wx:for="{{achievements}}" wx:key="id" class="achievement {{item.unlocked ? 'unlocked' : ''}}"><view class="row"><view class="medal">{{item.unlocked ? '✓' : '○'}}</view><view class="grow"><view>{{item.title}}</view><view class="caption">{{item.description}}</view></view></view><view class="meter"><view style="width:{{item.percent}}%"/></view><view class="badge">{{item.value}} / {{item.target}} {{item.unit}}{{item.unlocked ? ' · 已达成' : ''}}</view></view></view>
+    <view class="card"><view class="section-title">少花的钱，留给生活</view><block wx:if="{{stats.savings.configured}}"><view class="metric-value">¥ {{saved}}</view><view class="caption">累计估算 · 今天 ¥ {{savedToday}}</view></block><view wx:else class="notice">填写以前的消费习惯后才显示金额。</view><view class="caption space">按现实戒除打卡天数 × 以前每日花费估算，模拟消耗不会变成省钱。修改基准会重新计算历史估算。未使用某项可填 0。</view>
+      <text class="form-label">以前购买的槟榔档位</text><picker range="{{tiers}}" value="{{tierIndex}}" bindchange="tier"><view class="picker">{{tiers[tierIndex]}}　⌄</view></picker>
+      <view class="two"><view><text class="form-label">每袋实际价格 / 元</text><input type="digit" value="{{nutPrice}}" data-field="nutPrice" bindinput="input" placeholder="如 50"/></view><view><text class="form-label">每天嚼几颗</text><input type="number" value="{{nutsPerDay}}" data-field="nutsPerDay" bindinput="input" placeholder="如 3"/></view><view><text class="form-label">每盒香烟价格 / 元</text><input type="digit" value="{{smokePrice}}" data-field="smokePrice" bindinput="input" placeholder="如 20"/></view><view><text class="form-label">每天抽几根</text><input type="number" value="{{cigarettesPerDay}}" data-field="cigarettesPerDay" bindinput="input" placeholder="如 10"/></view></view>
+      <view class="action-row"><button class="primary" bindtap="saveSavings" disabled="{{busy}}">保存基准</button><button class="quiet" bindtap="clearSavings" disabled="{{busy || !stats.savings.configured}}">清除金额设置</button></view>
+    </view>
+  </block><view wx:else class="empty">云记录尚未加载，请联网后刷新。待同步操作仍保留在本机。</view>
+  <view class="footnote">模拟不代表安全用量。本工具不提供医学诊断或戒除效果保证。</view>
+</view>

@@ -1,0 +1,37 @@
+{
+  "pages": [
+    "pages/index/index",
+    "pages/progress/index",
+    "pages/account/index",
+    "pages/guide/index"
+  ],
+  "window": {
+    "navigationBarTitleText": "嚼槟榔模拟器",
+    "navigationBarBackgroundColor": "#f7f8f4",
+    "navigationBarTextStyle": "black",
+    "backgroundColor": "#f7f8f4"
+  },
+  "tabBar": {
+    "color": "#8c9781",
+    "selectedColor": "#4c623c",
+    "backgroundColor": "#ffffff",
+    "borderStyle": "white",
+    "list": [
+      {
+        "pagePath": "pages/index/index",
+        "text": "模拟"
+      },
+      {
+        "pagePath": "pages/progress/index",
+        "text": "记录与成就"
+      },
+      {
+        "pagePath": "pages/account/index",
+        "text": "我的"
+      }
+    ]
+  },
+  "style": "v2",
+  "lazyCodeLoading": "requiredComponents",
+  "sitemapLocation": "sitemap.json"
+}

@@ -1,6 +1,6 @@
 {
   "name": "chew-simulator",
-  "version": "1.4.0",
+  "version": "1.5.0",
   "description": "A visual simulator with optional MySQL-backed accounts and quitting reminders",
   "main": "desktop/main.cjs",
   "author": "Chew Simulator",
@@ -23,7 +23,10 @@
     "prepare:accounts": "node tools/build_scene.cjs && python tools/prepare_publish.py --accounts",
     "start:server": "node server/index.cjs",
     "test:accounts": "node tests/accounts.cjs",
-    "test:experience": "node tests/experience-upgrade.cjs"
+    "test:experience": "node tests/experience-upgrade.cjs",
+    "build:wechat": "node tools/build_wechat.cjs",
+    "prepare:wechat": "node tools/build_wechat.cjs && python tools/package_wechat.py",
+    "test:wechat": "node --test tests/wechat.test.cjs"
   },
   "devDependencies": {
     "electron": "38.8.6",

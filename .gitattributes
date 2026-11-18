@@ -10,3 +10,7 @@
 *.ps1 text eol=crlf
 *.png binary
 *.ico binary
+
+*.wxml text eol=lf
+*.wxss text eol=lf
+*.wav binary
