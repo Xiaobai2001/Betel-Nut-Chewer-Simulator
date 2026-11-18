@@ -87,8 +87,8 @@ def write_manifest(site: Path, version: str) -> None:
 def write_delivery_index() -> None:
     (ROOT / '成品/README.md').write_text('''# 交付文件导航
 
-- `微信小程序-1.5.2/`：原生小程序源码与 ZIP，导入内层 `微信小程序源码/`；详细步骤见其中 README。
-- `账号网页版部署/`：当前 1.5.2，使用 Node.js + MySQL，上传 WebAccounts.zip 并按 README 操作；支持账号、统计、成就与现实戒除省钱估算。旧账号版请在新目录解压后运行 Update-Accounts.ps1。
+- `微信小程序-1.5.3/`：原生小程序源码与 ZIP，导入内层 `微信小程序源码/`；详细步骤见其中 README。
+- `账号网页版部署/`：当前 1.5.3，使用 Node.js + MySQL，上传 WebAccounts.zip 并按 README 操作；支持账号、统计、成就与现实戒除省钱估算。旧账号版请在新目录解压后运行 Update-Accounts.ps1。
 - `网页服务器部署/`：纯静态 IIS 包，仅访客模拟，不运行账号后台。
 - `本机运行/`：本机双击的 EXE、安卓 APK 和离线网页版。
 - `云服务器部署/`：包含网页和客户端安装包下载的完整部署包，留待后续使用。

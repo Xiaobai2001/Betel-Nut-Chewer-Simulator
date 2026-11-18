@@ -5,7 +5,7 @@ const compiler=process.env.WECHAT_COMPILER_DIR;
 if(!compiler)throw Error('Set WECHAT_COMPILER_DIR to the installed wcc-exec directory.');
 const root=path.resolve('wechat/miniprogram'),build=path.resolve('.build/wechat-validation');fs.mkdirSync(build,{recursive:true});
 const pages=JSON.parse(fs.readFileSync(path.join(root,'app.json'))).pages;
-for(const [exe,files,dest] of [['wcc',pages.map(p=>p+'.wxml'),'wxml.js'],['wcsc',['app.wxss',...pages.map(p=>p+'.wxss')],'wxss.js']]){
+for(const [exe,files,dest] of [['wcc',pages.map(p=>p+'.wxml'),'wxml.js'],['wcsc',['app.wxss','styles/mobile-web.wxss',...pages.map(p=>p+'.wxss')],'wxss.js']]){
   const result=spawnSync(path.join(compiler,exe+(process.platform==='win32'?'.exe':'')),['-o',path.join(build,dest),...files],{cwd:root,encoding:'utf8'});
   assert.equal(result.status,0,result.stderr||String(result.error));assert(fs.statSync(path.join(build,dest)).size>0);
 }
@@ -23,4 +23,4 @@ for(const p of pages){
   definition.unsubscribe?.();
 }
 assert.deepEqual(errors,[]);delete global.Page;delete global.wx;delete global.getApp;
-console.log('PASS: official WXML/WXSS compilers and all four compiled page templates, bindings and guest data rendering');
+console.log('PASS: official WXML/WXSS compilers and all '+pages.length+' compiled page templates, bindings and guest data rendering');

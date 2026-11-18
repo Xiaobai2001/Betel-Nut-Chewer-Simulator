@@ -2,7 +2,7 @@ const FlatScene=require('../../utils/flat-scene');
 const FallbackScene=require('../../utils/scene');
 const Sounds=require('../../utils/audio');
 Page({
-  data:{renderer:'2d',wear:0,bites:0,fibers:0,pack:50,remaining:9,capacity:10,smokeRemaining:20,hasNut:true,lit:false,holding:false,used:0,sound:false,auto:false,full:false,zoom:100,viewportHeight:640,pageWidth:375,bottomInset:0,compact:false,packEffect:null,breathing:false,breathSeconds:60,breathPhase:'轻轻吸气',error:'',tiers:[{tier:50,name:'青椰绿',capacity:10},{tier:100,name:'秋山金',capacity:15},{tier:200,name:'夜岩黑',capacity:20}]},
+  data:{renderer:'2d',wear:0,bites:0,fibers:0,pack:50,remaining:9,capacity:10,smokeRemaining:20,hasNut:true,lit:false,holding:false,used:0,sound:false,auto:false,full:false,zoom:100,viewportHeight:640,pageWidth:375,bottomInset:0,compact:false,packEffect:null,error:'',tiers:[{tier:50,brand:'青 椰',name:'青椰绿',capacity:10},{tier:100,brand:'秋 山',name:'秋山金',capacity:15},{tier:200,brand:'夜 岩',name:'夜岩黑',capacity:20}]},
   onLoad(){
     this.visible=true;this.ready=false;this.sceneGeneration=0;this.switchToken=0;
     this.client=getApp().client;this.sounds=new Sounds();this.unsubscribe=this.client.subscribe(()=>this.update());
@@ -11,10 +11,11 @@ Page({
   onReady(){this.ready=true;this.setupCanvas();},
   onShow(){if(!this.client)return;this.visible=true;this.update();this.fitViewport(()=>{if(!this.ready)return;if(this.scene){this.resizeScene();this.scene.start();}else this.setupCanvas();});this.startClock();},
   onHide(){
-    this.visible=false;this.switchToken++;this.switching=false;this.stopAuto();this.stopClock();this.stopBreathing();this.sounds.stop();this.releaseScene();
+    this.visible=false;this.switchToken++;this.switching=false;this.stopAuto();this.stopClock();this.sounds.stop();this.releaseScene();
     if(this.data.full){this.setData({full:false,renderer:'2d',zoom:100});wx.showTabBar({animation:false});}
   },
   onUnload(){this.onHide();this.ready=false;if(this.unsubscribe)this.unsubscribe();clearTimeout(this.packTimer);},
+  onPageScroll(event){if(!this.data.full&&!this.switching)this.homeScrollTop=event.scrollTop;},
   onResize(){this.fitViewport(()=>this.resizeScene());},
   fitViewport(done){
     const info=wx.getWindowInfo?wx.getWindowInfo():wx.getSystemInfoSync();this.windowInfo=info;
@@ -57,7 +58,7 @@ Page({
   update(){
     const s=this.client.state,n=s.nut,c=s.cigarette;
     if(this.scene){this.scene.state=s;this.scene.reduced=this.client.preferences.reducedMotion;}
-    this.setData({wear:n?n.wear:0,bites:n?n.bites:0,fibers:n?n.fibers:0,hasNut:!!n,nutPack:n?n.pack:s.pack,pack:s.pack,remaining:s.remaining,capacity:s.capacity,smokeRemaining:s.smokeRemaining,lit:c.lit,holding:c.holding,used:Math.round(c.used*100),sound:this.client.preferences.sound,reduced:this.client.preferences.reducedMotion,accountLabel:this.client.user?'账号记录':'访客 · 本机记录',status:!n?'口中已空，休息一下':n.wear===100?'已纤维化，可以吐出':n.wear>50?'逐渐松散，颜色加深':n.wear?'纹理松动，轻微压扁':'饱满完整，尚未咀嚼'});
+    this.setData({bitesLabel:String(n?n.bites:0).padStart(2,'0'),sessionBites:s.totalBites,sessionSpits:s.spits,sessionDiscarded:s.discarded,wear:n?n.wear:0,bites:n?n.bites:0,fibers:n?n.fibers:0,hasNut:!!n,nutPack:n?n.pack:s.pack,pack:s.pack,remaining:s.remaining,capacity:s.capacity,smokeRemaining:s.smokeRemaining,lit:c.lit,holding:c.holding,used:Math.round(c.used*100),sound:this.client.preferences.sound,reduced:this.client.preferences.reducedMotion,accountLabel:this.client.user?(this.client.user.displayName||this.client.user.username)+' · 统计':'访客 · 本机记录',status:!n?'口中已空，休息一下':n.wear===100?'已纤维化，可以吐出':n.wear>50?'逐渐松散，颜色加深':n.wear?'纹理松动，轻微压扁':'饱满完整，尚未咀嚼'});
     if(this.autoTimer&&(!n||n.wear>=100))this.stopAuto();
   },
   run(type,value){try{const ok=this.client.perform(type,value);this.setData({error:''});return ok;}catch(error){this.stopAuto();this.stopClock();this.setData({error:error.message});return false;}},
@@ -80,6 +81,7 @@ Page({
     wx.nextTick(()=>{this.setData({packEffect:{tier:value,name:{50:'青椰',100:'秋山',200:'夜岩'}[value],capacity:this.client.state.capacity}});this.packTimer=setTimeout(()=>this.setData({packEffect:null}),this.data.reduced?550:1300);});
     this.sounds.play('pack',this.data.sound);return true;
   },
+  refillPack(){this.openPack(this.client.state.pack);},
   changePack(event){this.openPack(Number(event.currentTarget.dataset.tier));},
   toggleAuto(){if(this.autoTimer){this.stopAuto();return;}if(!this.data.hasNut||this.data.wear>=100)return;this.setData({auto:true});this.autoTimer=setInterval(()=>this.primary(),760);},
   stopAuto(){clearInterval(this.autoTimer);this.autoTimer=null;if(this.data.auto)this.setData({auto:false});},
@@ -90,7 +92,7 @@ Page({
     if(this.switching||!this.visible)return;this.switching=true;this.releaseScene();const full=!this.data.full,token=++this.switchToken;
     this.setData({full,renderer:full?'webgl':'2d',zoom:100,error:''},()=>{
       if(token!==this.switchToken||!this.visible)return;
-      const complete=()=>{if(token!==this.switchToken||!this.visible)return;this.fitViewport(()=>wx.nextTick(()=>{if(token!==this.switchToken||!this.visible)return;this.switching=false;this.setupCanvas();}));};
+      const complete=()=>{if(token!==this.switchToken||!this.visible)return;this.fitViewport(()=>wx.nextTick(()=>{if(token!==this.switchToken||!this.visible)return;this.switching=false;this.setupCanvas();if(!full&&wx.pageScrollTo)wx.pageScrollTo({scrollTop:this.homeScrollTop||0,duration:0});}));};
       if(full)wx.hideTabBar({animation:false,complete});else wx.showTabBar({animation:false,complete});
     });
   },
@@ -100,12 +102,7 @@ Page({
   touchStart(event){const t=event.touches[0];if(t&&this.scene&&this.scene.touchStart)this.scene.touchStart(t.x,t.y);},
   touchMove(event){const t=event.touches[0];if(t&&this.scene&&this.scene.touchMove)this.scene.touchMove(t.x,t.y);},
   touchEnd(){if(this.scene&&this.scene.touchEnd)this.scene.touchEnd();},
-  goAccount(){wx.switchTab({url:'/pages/account/index'});},
-  rest(){
-    this.stopAuto();this.stopBreathing();if(!this.run('putDown'))return;if(this.data.full)this.toggleFull();
-    this.setData({breathing:true,breathSeconds:60,breathPhase:'轻轻吸气'});this.breathStart=Date.now();
-    this.breathTimer=setInterval(()=>{const elapsed=(Date.now()-this.breathStart)/1000;if(elapsed>=60){this.stopBreathing();if(this.run('breathDone'))wx.showToast({title:'完成一次呼吸练习',icon:'none'});}else this.setData({breathSeconds:Math.ceil(60-elapsed),breathPhase:elapsed%10<4?'轻轻吸气':'慢慢呼气'});},200);
-  },
-  stopBreathing(){clearInterval(this.breathTimer);this.breathTimer=null;if(this.data.breathing)this.setData({breathing:false});},
-  goGuide(){wx.navigateTo({url:'/pages/guide/index'});}
+  goAccount(){wx.navigateTo({url:'/pages/account/index'});},
+  rest(){wx.switchTab({url:'/pages/pause/index'});},
+  goGuide(){wx.switchTab({url:'/pages/guide/index'});}
 });

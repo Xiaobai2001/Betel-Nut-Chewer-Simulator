@@ -1,9 +1,10 @@
 {
   "pages": [
     "pages/index/index",
+    "pages/pause/index",
     "pages/progress/index",
-    "pages/account/index",
-    "pages/guide/index"
+    "pages/guide/index",
+    "pages/account/index"
   ],
   "window": {
     "navigationBarTitleText": "嚼槟榔模拟器",
@@ -14,20 +15,32 @@
   "tabBar": {
     "color": "#8c9781",
     "selectedColor": "#4c623c",
-    "backgroundColor": "#ffffff",
+    "backgroundColor": "#fcfdf9",
     "borderStyle": "white",
     "list": [
       {
         "pagePath": "pages/index/index",
-        "text": "模拟"
+        "text": "模拟体验",
+        "iconPath": "assets/ui/grid-muted.png",
+        "selectedIconPath": "assets/ui/grid-green.png"
+      },
+      {
+        "pagePath": "pages/pause/index",
+        "text": "放下练习",
+        "iconPath": "assets/ui/heart-muted.png",
+        "selectedIconPath": "assets/ui/heart-green.png"
       },
       {
         "pagePath": "pages/progress/index",
-        "text": "记录与成就"
+        "text": "记录与成就",
+        "iconPath": "assets/ui/leaf-muted.png",
+        "selectedIconPath": "assets/ui/leaf-green.png"
       },
       {
-        "pagePath": "pages/account/index",
-        "text": "我的"
+        "pagePath": "pages/guide/index",
+        "text": "使用说明",
+        "iconPath": "assets/ui/info-muted.png",
+        "selectedIconPath": "assets/ui/info-green.png"
       }
     ]
   },

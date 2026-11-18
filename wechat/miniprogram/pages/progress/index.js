@@ -1,16 +1,25 @@
+const header=require('../../utils/header');
 const { today } = require('../../utils/client');
 const { dayShift } = require('../../lib/progress');
 const money = cents => (cents / 100).toFixed(2);
 Page({
-  data: { stats:null, guest:true, busy:false, error:'', day:today(), firstDay:dayShift(today(),-6), lastDay:today(), nutFree:false, smokeFree:false, tiers:['50 档 · 10 颗','100 档 · 15 颗','200 档 · 20 颗'], tierIndex:0, nutPrice:'', nutsPerDay:'', smokePrice:'', cigarettesPerDay:'' },
+  data: { scope:'total',metrics:null,stats:null, guest:true, busy:false, error:'', day:today(), firstDay:dayShift(today(),-6), lastDay:today(), nutFree:false, smokeFree:false, tiers:['50 档 · 10 颗','100 档 · 15 颗','200 档 · 20 颗'], tierIndex:0, nutPrice:'', nutsPerDay:'', smokePrice:'', cigarettesPerDay:'' },
   onLoad(){this.client=getApp().client;this.unsubscribe=this.client.subscribe(()=>this.update());this.update();this.loadBaseline();},
   onShow(){if(!this.client)return;this.update();this.client.refresh().then(()=>this.loadBaseline());},
-  onUnload(){if(this.unsubscribe)this.unsubscribe();},
+  onHide(){if(this.sounds)this.sounds.stop();},
+  onUnload(){this.onHide();if(this.unsubscribe)this.unsubscribe();},
+  goAccount:header.goAccount,
+  toggleSound(){header.toggleSound(this);},
+  selectScope(e){const scope=e.currentTarget.dataset.scope;if(!['total','today'].includes(scope))return;this.setData({scope});this.update();},
   update(){
     const stats=this.client.stats, owner=this.client.user?String(this.client.user.id):'guest';
     const changed=this.owner!==owner; if(changed){this.owner=owner;this.formDirty=false;this.checkDirty=false;this.setData({day:today()});}
-    const packs=stats?stats.progress.packs.map(pack=>Object.assign({},pack,{icons:Array.from({length:Math.min(pack.whole,6)},(_,i)=>i),dots:Array.from({length:pack.capacity},(_,i)=>({id:i,filled:i<pack.remainder}))})):[];
-    const box=stats&&stats.progress.cigaretteBoxes;
+    const metrics=stats&&stats[this.data.scope];
+    const scopePacks=metrics?[50,100,200].map((tier,i)=>{const capacity=[10,15,20][i],count=metrics['nuts_'+tier]||0;return {tier,capacity,count,whole:Math.floor(count/capacity),remainder:count%capacity};}):[];
+    const packs=scopePacks.map(pack=>Object.assign({},pack,{icons:Array.from({length:Math.min(pack.whole,6)},(_,i)=>i),dots:Array.from({length:pack.capacity},(_,i)=>({id:i,filled:i<pack.remainder}))}));
+    const lit=metrics?metrics.cigarettes_lit:0,box={whole:Math.floor(lit/20),remainder:lit%20};
+    const decimal=n=>Number(n.toFixed(2)).toString(),packageSummary='折合 '+decimal(scopePacks.reduce((sum,p)=>sum+p.count/p.capacity,0))+' 袋槟榔 · '+decimal(lit/20)+' 盒烟';
+    this.setData(Object.assign(header.data(this.client),{metrics,packageSummary,legacyNuts:metrics?Math.max(0,metrics.nuts_started-scopePacks.reduce((sum,p)=>sum+p.count,0)):0}));
     const achievements=stats?stats.progress.achievements.map(a=>Object.assign({},a,{percent:Math.min(100,Math.round(a.value/a.target*100))})):[];
     const savings=stats&&stats.savings;
     this.setData({stats,guest:!this.client.user,pending:this.client.pendingCount,syncError:this.client.syncError,packs,box,boxIcons:box?Array.from({length:Math.min(box.whole,6)},(_,i)=>i):[],boxDots:box?Array.from({length:20},(_,i)=>({id:i,filled:i<box.remainder})):[],achievements,saved:savings&&savings.configured?money(savings.totalCents):'',savedToday:savings&&savings.configured?money(savings.todayCents):'',firstDay:dayShift(today(),-6),lastDay:today()});

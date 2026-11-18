@@ -44,7 +44,7 @@ test('page modules execute without DOM, preserve edited checkins across sync upd
   const p=load('progress');p.switchCheck({currentTarget:{dataset:{field:'nutFree'}},detail:{value:true}});client.emit();assert.equal(p.data.nutFree,true);
   p.setData({nutPrice:'50',nutsPerDay:'3',smokePrice:'20',cigarettesPerDay:'10'});p.saveSavings();await new Promise(resolve=>setImmediate(resolve));assert.equal(client.stats.savings.configured,true);p.onUnload();
   const account=load('account');account.input({currentTarget:{dataset:{field:'password'}},detail:{value:'dummy'}});assert.equal(account.data.password,'dummy');account.onUnload();
-  load('guide');const index=load('index');index.primary();assert.equal(index.data.bites,1);index.toggleAuto();assert(index.autoTimer);index.onHide();assert.equal(index.autoTimer,null);assert.equal(index.burnTimer,null);index.onUnload();
+  load('guide').onUnload();const index=load('index');index.primary();assert.equal(index.data.bites,1);index.toggleAuto();assert(index.autoTimer);index.onHide();assert.equal(index.autoTimer,null);assert.equal(index.burnTimer,null);index.onUnload();
   delete global.wx;delete global.getApp;delete global.Page;
 });
 test('source includes all native pages, resolvable imports, no template condition literals or unsupported HTML',()=>{
@@ -58,6 +58,7 @@ test('home uses 2D and mode switches preserve the same simulation and records; s
   const renderer=kind=>function(...args){const scene={kind,state:kind==='2d'?args[2]:args[4],starts:0,destroyed:false,start(){this.starts++;},destroy(){this.destroyed=true;},resize(){}};instances.push(scene);return scene;};
   let def;const context={Page:value=>def=value,getApp:()=>({client}),wx,require:name=>name.endsWith('/audio')?class{stop(){} play(){}}:renderer(name.endsWith('/flat-scene')?'2d':name.endsWith('/webgl-scene')?'webgl':'fallback'),setTimeout,clearTimeout,setInterval,clearInterval};
   wx.getWindowInfo=()=>({windowWidth:390,windowHeight:670,pixelRatio:2,screenHeight:844,safeArea:{bottom:810}});
+  const scrolls=[];wx.pageScrollTo=options=>scrolls.push(options.scrollTop);
   wx.nextTick=fn=>ticks.push(fn);wx.hideTabBar=options=>tabs.push(options);wx.showTabBar=options=>tabs.push(options);
   wx.createSelectorQuery=()=>{const ids=[];return {in(){return this;},select(id){ids.push(id);return this;},fields(){return this;},boundingClientRect(){return this;},exec(callback){queries.push({ids,callback});}};};
   const resolveQuery=()=>{const q=queries.shift();q.callback(q.ids.map(()=>({node:{},width:370,height:310})));return q;};
@@ -68,8 +69,8 @@ test('home uses 2D and mode switches preserve the same simulation and records; s
     def.onLoad();def.onReady();assert.equal(def.data.renderer,'2d');assert.deepEqual(queries[0].ids,['#home-canvas','#smoke-preview']);resolveQuery();assert.equal(def.scene.kind,'2d');
     client.perform('chew');client.perform('light');client.perform('inhale');
     const state=client.state,snapshot=JSON.stringify(state),stats=JSON.stringify(client.stats),first=def.scene;
-    def.toggleFull();assert(first.destroyed);finishSwitch();assert.deepEqual(queries[0].ids,['#immersive-canvas']);resolveQuery();assert.equal(def.scene.kind,'webgl');assert.equal(def.scene.state,state);assert.equal(def.data.bottomInset,34);
-    const full=def.scene;def.toggleFull();assert(full.destroyed);finishSwitch();resolveQuery();assert.equal(def.scene.kind,'2d');assert.equal(def.scene.state,state);assert.equal(JSON.stringify(client.state),snapshot);assert.equal(JSON.stringify(client.stats),stats);
+    def.onPageScroll({scrollTop:380});def.toggleFull();assert(first.destroyed);finishSwitch();assert.deepEqual(queries[0].ids,['#immersive-canvas']);resolveQuery();assert.equal(def.scene.kind,'webgl');assert.equal(def.scene.state,state);assert.equal(def.data.bottomInset,34);
+    const full=def.scene;def.toggleFull();assert(full.destroyed);finishSwitch();resolveQuery();assert.equal(def.scene.kind,'2d');assert.equal(def.scene.state,state);assert.equal(JSON.stringify(client.state),snapshot);assert.equal(JSON.stringify(client.stats),stats);assert.equal(scrolls.at(-1),380);
     // Leave a query pending, then select the other mode before it returns.
     def.setupCanvas();def.toggleFull();finishSwitch();const count=instances.length;resolveQuery();assert.equal(instances.length,count);assert.equal(def.scene,null);resolveQuery();assert.equal(def.scene.kind,'webgl');
     // A background transition must invalidate the pending native tab callback.
@@ -77,4 +78,47 @@ test('home uses 2D and mode switches preserve the same simulation and records; s
     def.onShow();resolveQuery();assert.equal(def.scene.kind,'2d');assert.equal(def.scene.state,state);assert.equal(JSON.stringify(client.stats),stats);
     def.setupCanvas();def.onHide();const hiddenCount=instances.length;resolveQuery();assert.equal(instances.length,hiddenCount);assert.equal(def.scene,null);
   }finally{def.onUnload();}
+});
+
+test('dedicated pause page records only a full minute, cancels on leave/account switch and rolls back storage failures',()=>{
+  const wx=platform(),client=new Client(wx,config),timers=new Map();let now=0,next=0,def;
+  wx.showToast=()=>{};
+  const context={Page:value=>def=value,getApp:()=>({client}),wx,require:()=>require('../wechat/miniprogram/utils/header'),Date:{now:()=>now},setInterval:fn=>{timers.set(++next,fn);return next;},clearInterval:id=>timers.delete(id)};
+  vm.runInNewContext(fs.readFileSync('wechat/miniprogram/pages/pause/index.js','utf8'),context);
+  def.data=structuredClone(def.data);def.setData=function(value){Object.assign(this.data,value);};
+  try{
+    def.onLoad();client.perform('light');client.perform('chew');def.start();assert.equal(client.state.nut,null);assert.equal(client.state.cigarette.lit,false);assert.equal(timers.size,1);
+    now=59999;def.tick();assert.equal(client.stats.total.breaths,0);assert.equal(def.data.seconds,1);
+    now=60000;def.tick();assert.equal(client.stats.total.breaths,1);assert.equal(timers.size,0);def.tick();assert.equal(client.stats.total.breaths,1);
+    def.start();const pendingTick=timers.values().next().value;now=65000;def.onHide();now=130000;pendingTick();assert.equal(client.stats.total.breaths,1);assert.equal(timers.size,0);
+    def.onShow();def.start();client.session={user:{id:'9007199254740993',username:'tester'},token:'fake'};client.emit();assert.equal(timers.size,0);assert.equal(def.data.running,false);
+    client.session=null;client.emit();wx.failStorage=true;def.start();assert.match(def.data.error,/存储/);assert.equal(def.data.running,false);assert.equal(timers.size,0);
+  }finally{def.onUnload();}
+});
+
+test('journal total/today tabs change the metrics and package equivalents without changing records or edited forms',()=>{
+  const wx=platform(),client=new Client(wx,config);let def;
+  Object.assign(client.stats.total,{bites:354,nuts_started:26,nuts_50:11,nuts_100:15,cigarettes_lit:21});
+  Object.assign(client.stats.today,{bites:14,nuts_started:2,nuts_50:2,nuts_100:0,cigarettes_lit:1});
+  const snapshot=JSON.stringify(client.stats),dir=path.resolve('wechat/miniprogram/pages/progress');
+  vm.runInNewContext(fs.readFileSync(path.join(dir,'index.js'),'utf8'),{Page:value=>def=value,getApp:()=>({client}),wx,require:name=>require(path.resolve(dir,name))});
+  def.data=structuredClone(def.data);def.setData=function(value){Object.assign(this.data,value);};
+  try{
+    def.onLoad();assert.equal(def.data.metrics.bites,354);assert.equal(def.data.packs[0].whole,1);assert.equal(def.data.packs[1].whole,1);assert.equal(def.data.box.whole,1);
+    def.switchCheck({currentTarget:{dataset:{field:'nutFree'}},detail:{value:true}});
+    def.input({currentTarget:{dataset:{field:'nutPrice'}},detail:{value:'42'}});
+    def.selectScope({currentTarget:{dataset:{scope:'today'}}});assert.equal(def.data.metrics.bites,14);assert.equal(def.data.packs[0].remainder,2);assert.equal(def.data.packs[1].whole,0);assert.equal(def.data.box.whole,0);assert.equal(def.data.box.remainder,1);assert.match(def.data.packageSummary,/0.2 袋.*0.05 盒/);
+    assert.equal(def.data.nutFree,true);assert.equal(def.data.nutPrice,'42');assert.equal(JSON.stringify(client.stats),snapshot);
+    def.selectScope({currentTarget:{dataset:{scope:'total'}}});assert.equal(def.data.metrics.bites,354);assert.match(def.data.packageSummary,/2.1 袋.*1.05 盒/);
+  }finally{def.onUnload();}
+});
+
+test('website-style tabs and header/account links use valid native page routes and local icons',()=>{
+  const root=path.resolve('wechat/miniprogram'),app=JSON.parse(fs.readFileSync(path.join(root,'app.json'))),tabs=app.tabBar.list.map(item=>'/'+item.pagePath);
+  assert.deepEqual(app.tabBar.list.map(item=>item.text),['模拟体验','放下练习','记录与成就','使用说明']);
+  for(const item of app.tabBar.list){assert(app.pages.includes(item.pagePath));for(const key of ['iconPath','selectedIconPath'])assert(fs.existsSync(path.join(root,item[key])));}
+  for(const file of fs.readdirSync(root,{recursive:true}).filter(name=>name.endsWith('.js')&&!name.startsWith('lib'))){
+    const source=fs.readFileSync(path.join(root,file),'utf8');
+    for(const [,method,route] of source.matchAll(/wx\.(switchTab|navigateTo)\(\{url:'([^']+)'/g)){assert(app.pages.includes(route.slice(1)),file);assert.equal(tabs.includes(route),method==='switchTab',file+' '+route);}
+  }
 });

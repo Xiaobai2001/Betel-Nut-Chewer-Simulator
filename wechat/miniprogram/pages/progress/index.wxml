@@ -1,17 +1,18 @@
-<view class="container">
-  <view class="eyebrow">ONE LESS, ONE STEP</view><view class="title">把改变，看得见</view>
-  <view class="subtitle">模拟用量与现实戒除分别记录。每一次停下来，都有意义。</view>
-  <view class="notice">{{guest ? '访客模式 · 仅保存在本机，不会合并到云账号。' : '原网页账号 · 数据同步到同一个账号。'}}<text wx:if="{{pending}}"> 待同步 {{pending}} 条</text></view>
+<view class="web-topbar"><view class="web-breadcrumb">你的模拟空间<text>/</text><text class="current">记录与成就</text></view><view class="web-header-actions"><button class="web-account account-pill" bindtap="goAccount">{{accountLabel}}</button><button class="web-sound" bindtap="toggleSound" aria-label="切换音效"><image class="web-icon" src="/assets/ui/{{sound ? 'sound' : 'mute'}}-green.png"/></button></view></view>
+<view class="web-content web-journal">
+  <view class="web-heading"><view class="web-eyebrow">PERSONAL JOURNAL / ONE DAY AT A TIME</view><view class="web-title">每一点减少，都算数。</view><view class="web-subtitle">看见模拟用量，把现实中的选择留给健康。</view></view>
+  <view class="web-journal-toolbar"><view class="web-journal-tabs"><button class="{{scope === 'total' ? 'selected' : ''}}" data-scope="total" bindtap="selectScope">累计模拟</button><button class="{{scope === 'today' ? 'selected' : ''}}" data-scope="today" bindtap="selectScope">今日模拟</button></view><button class="web-sync" bindtap="refresh" loading="{{busy}}" disabled="{{busy}}">同步记录 ↻</button></view>
+  <view class="web-sync-note">{{guest ? '访客 · 仅保存在本机' : pending ? '待同步 ' + pending + ' 条' : '已同步'}} · 今日按北京时间统计</view>
   <view wx:if="{{syncError}}" class="error">{{syncError}}</view><view wx:if="{{error}}" class="error">{{error}}</view>
-  <button class="quiet space" bindtap="refresh" loading="{{busy}}" disabled="{{busy}}">刷新记录</button>
   <block wx:if="{{stats}}">
-    <view class="card"><view class="section-title">今天的虚拟用量</view><view class="two">
-      <view><view class="metric-value">{{stats.today.bites}}<text class="metric-unit">口</text></view><view class="metric-label">咀嚼次数</view></view>
-      <view><view class="metric-value">{{stats.today.nuts_started}}<text class="metric-unit">颗</text></view><view class="metric-label">嚼过槟榔</view></view>
-      <view><view class="metric-value">{{stats.today.cigarettes_lit}}<text class="metric-unit">根</text></view><view class="metric-label">点燃香烟</view></view>
-      <view><view class="metric-value">{{stats.today.puffs}}<text class="metric-unit">口</text></view><view class="metric-label">模拟吸烟</view></view>
-    </view><view class="divider"/><view class="caption">累计咀嚼 {{stats.total.bites}} 口 · 嚼过 {{stats.total.nuts_started}} 颗 · 嚼完 {{stats.total.nuts_completed}} 颗 · 累计点燃 {{stats.total.cigarettes_lit}} 根 · 吸过 {{stats.total.cigarettes_smoked}} 根 · 燃尽 {{stats.total.cigarettes_finished}} 根</view></view>
-    <view class="card"><view class="section-title">留下的包装</view><view class="caption">按实际开始嚼的颗数折合袋数；香烟按点燃数折合盒数。换包装本身不计入用量。</view>
+    <view class="web-journal-metrics">
+      <view class="web-stat-card"><text>嚼过槟榔</text><view class="web-stat-value">{{metrics.nuts_started}}<text>颗</text></view><view>其中嚼完 {{metrics.nuts_completed}} 颗</view></view>
+      <view class="web-stat-card"><text>咀嚼次数</text><view class="web-stat-value">{{metrics.bites}}<text>次</text></view><view>每一次有效咀嚼</view></view>
+      <view class="web-stat-card"><text>点燃香烟</text><view class="web-stat-value">{{metrics.cigarettes_lit}}<text>根</text></view><view>吸过 {{metrics.cigarettes_smoked}} 根 · 抽完 {{metrics.cigarettes_finished}} 根</view></view>
+      <view class="web-stat-card rest-metric"><text>留给自己的停顿</text><view class="web-stat-value">{{metrics.breaths}}<text>分钟</text></view><view>提前吐出 {{metrics.early_discarded}} 次 · 提前熄灭 {{metrics.early_extinguished}} 次</view></view>
+    </view>
+    <view class="web-journal-section"><view class="web-eyebrow">THE TRACE WE LEAVE</view><view class="web-journal-section-title"><text>消耗，看得见。</text><text>{{packageSummary}}</text></view><view class="web-description">包装按嚼过的颗数、点燃的根数折合展示。反复换包不会增加消耗；这些都是虚拟模拟记录。</view></view>
+    <view class="card package-card">
       <view class="package-row" wx:for="{{packs}}" wx:key="tier">
         <view class="row between"><text>{{item.tier}} 档 · {{item.capacity}} 颗 / 袋</text><text class="pill">{{item.whole}} 袋 + {{item.remainder}} 颗</text></view>
         <view class="package-shelf"><view class="mini-pack tier-{{item.tier}}" wx:for="{{item.icons}}" wx:for-item="icon" wx:key="*this"><text>{{item.tier}}</text><text class="mini-label">空袋</text></view><text wx:if="{{item.whole > 6}}" class="caption">共 {{item.whole}} 袋</text><text wx:if="{{!item.whole}}" class="caption">还没有完整空袋</text></view>
@@ -20,7 +21,7 @@
       <view class="package-row"><view class="row between"><text>香烟 · 20 根 / 盒</text><text class="pill">{{box.whole}} 盒 + {{box.remainder}} 根</text></view>
         <view class="package-shelf"><view class="mini-box" wx:for="{{boxIcons}}" wx:key="*this">20<text class="mini-label">空盒</text></view><text wx:if="{{box.whole > 6}}" class="caption">共 {{box.whole}} 盒</text><text wx:if="{{!box.whole}}" class="caption">还没有完整空盒</text></view>
         <view class="dots"><view wx:for="{{boxDots}}" wx:for-item="dot" wx:key="id" class="dot cigarette-dot {{dot.filled ? 'filled' : ''}}"/></view>
-      </view><view wx:if="{{stats.progress.unknownLegacyNuts}}" class="caption">旧版未记录档位的 {{stats.progress.unknownLegacyNuts}} 颗保留在总数中。</view>
+      </view><view wx:if="{{legacyNuts}}" class="caption">旧版未记录档位的 {{legacyNuts}} 颗保留在总数中。</view>
     </view>
     <view class="card"><view class="section-title">现实戒除打卡</view><view class="caption">只记录现实情况，不根据模拟次数或是否打开页面推断。可更正最近 7 天，北京时间。</view>
       <picker mode="date" value="{{day}}" start="{{firstDay}}" end="{{lastDay}}" bindchange="selectDay"><view class="picker space">{{day}}　⌄</view></picker>

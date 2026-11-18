@@ -17,5 +17,5 @@ Page({
   async sync(){if(this.data.busy)return;this.setData({busy:true,error:''});try{await this.client.refresh();}catch(e){this.setData({error:e.message});}finally{this.setData({busy:false});}},
   async logout(){if(this.data.busy)return;this.setData({busy:true,error:''});try{await this.client.logout();}catch(e){this.setData({error:e.message});}finally{this.setData({busy:false});}},
   preference(e){try{this.client.setPreference(e.currentTarget.dataset.field,e.detail.value);}catch(error){this.setData({error:error.message});}},
-  guide(){wx.navigateTo({url:'/pages/guide/index'});}
+  guide(){wx.switchTab({url:'/pages/guide/index'});}
 });

@@ -6,7 +6,7 @@
 
 ## 1. 上传并完整解压
 
-将 `ChewSimulator-1.5.2-WebServer.zip` 上传到服务器，通过资源管理器完整解压到 `C:\Deploy\ChewSimulatorWeb`。最终应当是以下结构，不能多套一层目录：
+将 `ChewSimulator-1.5.3-WebServer.zip` 上传到服务器，通过资源管理器完整解压到 `C:\Deploy\ChewSimulatorWeb`。最终应当是以下结构，不能多套一层目录：
 
 ```text
 C:\Deploy\ChewSimulatorWeb\
@@ -47,7 +47,7 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Deploy-Site.ps1 -Port 
 (Invoke-WebRequest -Uri 'http://127.0.0.1:8080/release-manifest.json' -UseBasicParsing -TimeoutSec 15).Content
 ```
 
-首页应返回 200，版本清单显示 1.5.2。然后在自己的电脑或手机浏览器访问 `http://SERVER_IP:8080/`，将 SERVER_IP 换成服务器公网 IP。
+首页应返回 200，版本清单显示 1.5.3。然后在自己的电脑或手机浏览器访问 `http://SERVER_IP:8080/`，将 SERVER_IP 换成服务器公网 IP。
 
 验收咀嚼形变、吐渣、换包、点烟与吸吐烟、明亮全屏、旋转与退出。在电脑可使用空格咀嚼、L 点烟、I 吸入、O 吐烟、F 全屏、Esc 退出；手机使用页面按钮。
 

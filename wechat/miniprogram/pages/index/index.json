@@ -1,1 +1,6 @@
-{"navigationBarTitleText":"嚼 · 一下","usingComponents":{},"navigationStyle":"default","disableScroll":true}
+{
+  "navigationBarTitleText": "嚼槟榔模拟器",
+  "usingComponents": {},
+  "navigationStyle": "default",
+  "disableScroll": false
+}

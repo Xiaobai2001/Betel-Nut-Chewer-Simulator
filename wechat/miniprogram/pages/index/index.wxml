@@ -1,4 +1,4 @@
-<view class="experience {{full ? 'immersive' : 'home'}} {{compact ? 'compact' : ''}}" style="height:{{viewportHeight}}px;width:{{pageWidth}}px;padding-bottom:{{bottomInset + 8}}px">
+<view wx:if="{{full}}" class="experience {{full ? 'immersive' : 'home'}} {{compact ? 'compact' : ''}}" style="height:{{viewportHeight}}px;width:{{pageWidth}}px;padding-bottom:{{bottomInset + 8}}px">
   <view class="scene-toolbar"><text class="pill account-pill" bindtap="goAccount">{{accountLabel}}</text><view class="toolbar-actions"><button class="mini-button" bindtap="toggleSound">音效{{sound ? '开' : '关'}}</button><button class="mini-button mode-button" bindtap="toggleFull">{{full ? '退出沉浸' : '全屏沉浸'}}</button></view></view>
   <view class="lab">
     <view class="lab-heading"><text><text class="section-number">01</text>{{full ? '把这一刻，放大。' : '咀嚼实验室'}}</text><text class="lab-hint">{{full ? '三维沉浸 · 无嘴巴' : '二维口腔 · 实时变化'}}</text></view>
@@ -21,4 +21,35 @@
   <view class="bottom-row"><text class="health-note" bindtap="goGuide">纯模拟 · 槟榔致癌，吸烟有害</text><button class="rest-button" bindtap="rest">放下，呼吸一分钟 →</button></view>
   <view wx:if="{{error}}" class="error-toast" bindtap="goGuide">{{error}}</view>
 </view>
-<view class="breath-overlay" wx:if="{{breathing}}"><view class="eyebrow">A MINUTE FOR YOURSELF</view><view class="breath-circle"><view>{{breathPhase}}</view><text>{{breathSeconds}} 秒</text></view><view class="caption">轻松自然地呼吸，不必屏息。</view><button class="quiet space" bindtap="stopBreathing">提前结束</button><view class="footnote">完成 60 秒才计入一次练习；切到后台会结束本次。</view></view>
+<view wx:else class="web-home">
+<view class="web-topbar"><view class="web-breadcrumb">你的模拟空间<text>/</text><text class="current">模拟体验</text></view><view class="web-header-actions"><button class="web-account account-pill" bindtap="goAccount">{{accountLabel}}</button><button class="web-sound" bindtap="toggleSound" aria-label="切换音效"><image class="web-icon" src="/assets/ui/{{sound ? 'sound' : 'mute'}}-green.png"/></button></view></view>
+<view class="web-content">
+  <view class="web-heading"><view class="web-eyebrow">A LITTLE CURIOSITY. A HEALTHIER CHOICE.</view><view class="web-title">嚼槟榔模拟器<text class="web-tag">互动体验</text></view><view class="web-subtitle">在屏幕里体验，现实里少一点。让每一次好奇，都有更轻松的出口。</view></view>
+  <view class="web-health"><view class="web-health-icon"><image src="/assets/ui/heart-gold.png"/></view><view class="web-health-copy"><view class="web-health-title">模拟就好，健康更重要。</view><view>槟榔具有致癌风险，吸烟同样危害健康。价格不代表安全，建议戒槟榔、戒烟。</view></view><button bindtap="rest">试试放下<image src="/assets/ui/arrow-gold.png"/></button></view>
+  <view class="web-card web-lab">
+    <view class="web-card-heading"><view class="web-card-title"><text class="web-number">01</text>咀嚼实验室</view><button class="web-enter" bindtap="toggleFull">⛶ 全屏沉浸</button></view>
+    <view class="web-stage"><view class="web-stage-grid"/><canvas type="2d" id="home-canvas" class="web-main-canvas"/>
+      <view class="web-stage-status"><text>当前状态</text><view>{{status}}</view></view><view class="web-stage-counter"><view>{{bitesLabel}}</view><text>本颗咀嚼 / 次</text></view>
+      <view class="web-stage-caption"><text class="web-pulse-dot"/>每一口都在变扁、变深，纤维逐渐散开</view><view class="web-stage-bottom"><text>虚拟口腔 · 形态示意</text><text>{{nutPack}} 档包装</text></view>
+    </view>
+    <view class="web-texture"><view class="web-texture-top"><view>形态变化<text>{{wear === 100 ? '完全纤维化' : wear > 65 ? '明显纤维化' : wear > 30 ? '逐渐松散' : '饱满完整'}}</text></view><view class="web-wear-value">{{wear}}<text>%</text></view></view><view class="web-progress-track"><view style="width:{{wear}}%"/></view><view class="web-texture-scale"><text>完整</text><text>压扁 · 松散</text><text>纤维化</text></view></view>
+    <view class="web-chew-controls"><button id="chew-button" class="web-primary" disabled="{{hasNut && wear === 100}}" bindtap="primary"><image src="/assets/ui/play-white.png"/>{{hasNut ? '嚼一口' : (remaining ? '取一颗' : '换包取一颗')}}</button><button class="web-secondary" disabled="{{!hasNut || !fibers}}" data-action="spit" bindtap="action"><image src="/assets/ui/spit-green.png"/>吐渣</button><button class="web-secondary" disabled="{{!hasNut}}" data-action="discard" bindtap="action"><image src="/assets/ui/out-green.png"/>吐出槟榔</button></view>
+    <view class="web-control-footer"><button class="web-auto" disabled="{{!hasNut || wear === 100}}" bindtap="toggleAuto"><view class="web-toggle {{auto ? 'on' : ''}}"><view/></view>自动咀嚼</button><text>{{fibers ? '口中碎渣 ' + fibers + '%' : '口中暂无碎渣'}}</text></view>
+  </view>
+  <view class="web-card web-session"><view class="web-session-title"><image class="web-icon" src="/assets/ui/grid-muted.png"/><view>本次体验<text>当前模拟会话</text></view></view><view><text class="web-session-value">{{sessionBites}}</text><text>模拟咀嚼</text></view><view><text class="web-session-value">{{sessionSpits}}</text><text>吐渣次数</text></view><view><text class="web-session-value">{{sessionDiscarded}}</text><text>已吐出</text></view></view>
+  <view class="web-card web-pack-panel"><view class="web-card-heading"><view class="web-card-title"><text class="web-number">02</text>换一包</view><text class="web-subtle">虚拟包装</text></view><view class="web-description">选一种外观，开始你的模拟。</view>
+    <view class="web-pack-options"><button wx:for="{{tiers}}" wx:key="tier" class="web-pack-option {{pack === item.tier ? 'selected' : ''}}" data-tier="{{item.tier}}" bindtap="changePack"><view class="web-pack-art web-tier-{{item.tier}}"><view class="web-pack-seal"/><text class="web-pack-brand">{{item.brand}}</text><text class="web-pack-leaf">❧</text><text class="web-pack-number">{{item.tier}}</text><text class="web-pack-detail">VIRTUAL ONLY</text></view><text class="web-pack-price">¥ {{item.tier}}</text><text class="web-pack-name">{{item.name}} · {{item.capacity}} 颗</text><view wx:if="{{pack === item.tier}}" class="web-pack-selected">✓</view></button></view>
+    <view class="web-pack-stock"><text>当前包剩余 {{remaining}} / {{capacity}} 颗</text><button bindtap="refillPack">重新换包 ↻</button></view><view class="web-tiny-note">仅展示虚拟档位，无购买功能。各档位均不安全。</view>
+    <view wx:if="{{packEffect}}" class="pack-overlay {{reduced ? 'reduced' : ''}}"><view class="opening-bag tier-{{packEffect.tier}}"><view class="tear"/><view class="opening-name">{{packEffect.name}}</view><view class="opening-price">{{packEffect.tier}}</view><view class="opening-caption">{{packEffect.capacity}} 颗 · 虚拟包装</view></view></view>
+  </view>
+  <view class="web-card web-smoke-panel"><view class="web-card-heading"><view class="web-card-title"><text class="web-number">03</text>点一根？</view><text class="web-subtle">可选模拟</text></view>
+    <view class="web-smoke-visual"><canvas type="2d" id="smoke-preview"/><text>{{holding ? '轻轻吐出烟雾' : lit ? '模拟燃烧中' : used ? '已熄灭' : '未点燃'}}</text></view>
+    <view class="web-smoke-controls"><button id="light-button" class="web-dark" disabled="{{lit}}" data-action="light" bindtap="action"><image src="/assets/ui/fire-white.png"/>{{used && !lit ? '再点一根' : '点一根'}}</button><button class="web-secondary" disabled="{{!lit || holding}}" data-action="inhale" bindtap="action">吸一口</button><button class="web-secondary" disabled="{{!holding}}" data-action="exhale" bindtap="action">吐烟</button></view>
+    <view class="web-smoke-footer"><text>模拟烟雾，不点燃真实香烟</text><button disabled="{{!lit && !holding}}" data-action="extinguish" bindtap="action">熄灭</button></view>
+    <view class="web-box-stock"><view class="web-cigarette-box"><view/>20</view><view>本盒剩余 {{smokeRemaining}} / 20 根<text>用完后再次点燃会自动取新盒 · 可随时放下</text></view></view>
+    <view class="web-smoke-warning"><image class="web-icon" src="/assets/ui/info-gold.png"/>槟榔与烟草并用，会增加健康风险。</view>
+  </view>
+  <button class="web-rest-link" bindtap="rest"><view class="web-rest-icon"><image class="web-icon" src="/assets/ui/cup-green.png"/></view><view><view class="web-rest-title">这一口，换成深呼吸。</view><view class="web-rest-caption">放下屏幕里的习惯，给自己一分钟。</view></view><image class="web-icon" src="/assets/ui/arrow-muted.png"/></button>
+  <view wx:if="{{error}}" class="error">{{error}}</view>
+  <view class="web-footer"><text>为好奇而做，也为健康留白。</text><text>纯视觉模拟 · 无真实商品 · 非戒断治疗工具</text></view>
+</view></view>

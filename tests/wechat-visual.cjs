@@ -20,15 +20,15 @@ function html(node){
  const browser=await chromium.launch({channel:'chrome',headless:true});
  const template={window:{},console};vm.createContext(template);vm.runInContext(fs.readFileSync(path.join(output,'wxml.js'),'utf8'),template);
  try{
-  for(const width of [320,360,390])for(const name of ['index','immersive','progress','account','guide']){
+  for(const width of [320,360,390])for(const name of ['index','immersive','pause','progress','account','guide']){
     // Usable window heights exclude the native navigation/tab bars, not device pixels.
     const height=name==='index'?{320:430,360:560,390:670}[width]:name==='immersive'?{320:479,360:609,390:753}[width]:740;
     const page=await browser.newPage({viewport:{width,height},deviceScaleFactor:1});const errors=[];page.on('pageerror',e=>errors.push(e.message));
     const pageName=name==='immersive'?'index':name,compiled=JSON.parse(fs.readFileSync(path.join(output,name+'.json')));
     Object.assign(compiled.data,{pageWidth:width,viewportHeight:height,compact:height<560,bottomInset:name==='immersive'&&width===390?34:0});
     compiled.tree=template.$gwx('pages/'+pageName+'/index.wxml')(compiled.data,{});
-    let css=fs.readFileSync(path.join(root,'app.wxss'),'utf8')+'\n'+fs.readFileSync(path.join(root,'pages',pageName,'index.wxss'),'utf8');
-    css=css.replace(/\bpage\b/g,'body').replace(/(?<![.#\w-])view(?=[\s,:.>\[{])/g,'div').replace(/(?<![.#\w-])text(?=[\s,:.>\[{])/g,'span').replace(/([\d.]+)rpx/g,(_,n)=>Number(n)*width/750+'px');
+    let css=fs.readFileSync(path.join(root,'styles/mobile-web.wxss'),'utf8')+'\n'+fs.readFileSync(path.join(root,'app.wxss'),'utf8').replace(/@import[^;]+;/g,'')+'\n'+fs.readFileSync(path.join(root,'pages',pageName,'index.wxss'),'utf8');
+    css=css.replace(/\bpage\b/g,'body').replace(/(?<![.#\w-])view(?=[\s,:.>\[{])/g,'div').replace(/(?<![.#\w-])text(?=[\s,:.>\[{])/g,'span').replace(/(?<![.#\w-])image(?=[\s,:.>\[{])/g,'img').replace(/([\d.]+)rpx/g,(_,n)=>Number(n)*width/750+'px');
     await page.setContent('<meta charset="utf-8"><style>body{margin:0}div,span,button,input,main{box-sizing:border-box}button{display:block;border:0}button:not([size=mini]){width:184px}input{width:100%}input[type=checkbox]{width:35px}canvas{display:block}slider,.range-adapter{width:40%;flex:1}'+css+'</style>'+html(compiled.tree));
     if(pageName==='index'){
       await page.addScriptTag({content:fs.readFileSync(path.join(root,'lib/model.js'),'utf8')});
@@ -51,10 +51,20 @@ function html(node){
       await page.waitForTimeout(130);assert.equal(await page.evaluate(()=>model.nut.wear),100);
       if(name==='index')assert.notEqual(await page.locator('canvas').first().evaluate(canvas=>canvas.toDataURL()),initial,'2D wear/particles must visibly change');
       await page.screenshot({path:path.join(output,name+'-worn-'+width+'.png'),fullPage:true});
-      const outside=await page.locator('.experience button,.scene-canvas,.bottom-row,.pack-card').evaluateAll((items,h)=>items.filter(el=>{const r=el.getBoundingClientRect();return r.top<0||r.bottom>h+1;}).map(el=>el.id||el.className),height);
-      assert.deepEqual(outside,[],name+' '+width+' vertical overflow');
-      assert(await page.locator('.experience').evaluate(el=>el.scrollHeight<=el.clientHeight+1),name+' needs scrolling');
-      assert(await page.locator('.scene-canvas').evaluate(el=>el.clientHeight)>=105,'canvas is too small');
+      if(name==='immersive'){
+        const outside=await page.locator('.experience button,.scene-canvas,.bottom-row,.pack-card').evaluateAll((items,h)=>items.filter(el=>{const r=el.getBoundingClientRect();return r.top<0||r.bottom>h+1;}).map(el=>el.id||el.className),height);
+        assert.deepEqual(outside,[],name+' '+width+' vertical overflow');
+        assert(await page.locator('.experience').evaluate(el=>el.scrollHeight<=el.clientHeight+1),name+' needs scrolling');
+      }else{
+        assert(await page.locator('#home-canvas').evaluate(el=>el.clientHeight)>=250,'normal 2D canvas must stay large');
+        assert.equal(await page.locator('#smoke-preview').evaluate(el=>el.clientHeight),116,'smoke has its own full-size card');
+        const bounds=await page.locator('.web-lab,.web-pack-panel,.web-smoke-panel').evaluateAll(els=>els.map(el=>({top:el.getBoundingClientRect().top,bottom:el.getBoundingClientRect().bottom})));
+        assert(bounds[0].bottom<bounds[1].top&&bounds[1].bottom<bounds[2].top,'simulation, packs and smoking should stack vertically');
+        assert(await page.evaluate(()=>document.documentElement.scrollHeight)>height,'normal page scrolls like the website');
+        await page.locator('#light-button').scrollIntoViewIfNeeded();
+        assert(await page.locator('#light-button').evaluate(el=>{const r=el.getBoundingClientRect();return r.top>=0&&r.bottom<=innerHeight;}),'smoking actions reachable by scrolling');
+        await page.screenshot({path:path.join(output,'smoking-'+width+'.png')});
+      }
       await page.evaluate(()=>scene.destroy());
     }else await page.screenshot({path:path.join(output,name+'-'+width+'.png'),fullPage:true});
     assert(await page.evaluate(()=>document.documentElement.scrollWidth)<=width,name+' horizontal overflow');
@@ -63,6 +73,6 @@ function html(node){
     if(pageName==='index'){assert.equal(await page.locator('.account-pill').evaluate(el=>el.scrollWidth<=el.clientWidth+1),true,'visitor badge wrapped/clipped');}
     assert.deepEqual(errors,[]);await page.close();
   }
-  console.log('PASS: compiled WXML at 320/360/390 px; 2D home mouth/tray/smoke, full-only WebGL, wear/rotation/drag/spit; all primary/pack controls within usable portrait height without scrolling');
+  console.log('PASS: five native pages at 320/360/390 px; scrolling mobile-web home with full-size 2D and smoke cards; fullscreen WebGL with controls in viewport; wear/rotation/drag/spit and unclipped buttons');
  }finally{await browser.close();}
 })().catch(error=>{console.error(error);process.exitCode=1;});
