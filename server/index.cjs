@@ -7,6 +7,7 @@ const { createApp } = require('./app.cjs');
   await pool.query('SELECT id FROM chew_users LIMIT 1');
   await pool.query('SELECT user_id FROM chew_activity_daily LIMIT 1');
   await pool.query('SELECT user_id FROM chew_checkins LIMIT 1');
+  await pool.query('SELECT user_id FROM chew_savings_settings LIMIT 1');
   const app = await createApp(pool, config);
   const server = app.listen(config.port, config.host || '127.0.0.1', () => console.log(new Date().toISOString(), 'Chew Simulator ready:', config.publicOrigin));
   server.on('error', error => { console.error('Listen failed:', error.code); pool.end().finally(() => process.exit(1)); });

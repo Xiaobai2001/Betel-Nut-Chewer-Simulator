@@ -18,20 +18,13 @@
   function playSound(kind) {
     if (!sound) return;
     try {
-      audio ||= new (window.AudioContext || window.webkitAudioContext)();
-      if (audio.state === 'suspended') audio.resume().catch(() => {});
-      const duration = kind === 'smoke' ? .65 : kind === 'spit' ? .15 : .12;
-      const buffer = audio.createBuffer(1, Math.floor(audio.sampleRate * duration), audio.sampleRate);
-      const samples = buffer.getChannelData(0);
-      for (let i = 0; i < samples.length; i++) samples[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / samples.length, 2);
-      const source = audio.createBufferSource(); source.buffer = buffer;
-      const filter = audio.createBiquadFilter(); filter.type = 'bandpass'; filter.frequency.value = kind === 'chew' ? 900 : 1700;
-      const gain = audio.createGain(); gain.gain.value = kind === 'chew' ? .12 : .065;
-      source.connect(filter); filter.connect(gain); gain.connect(audio.destination); source.start();
-      source.onended = () => { source.disconnect(); filter.disconnect(); gain.disconnect(); };
+      audio ||= new SimulatorSound();
+      audio.play(kind);
     } catch { toast('当前设备不支持音效，其他功能可正常使用。'); sound = false; updateSound(); }
   }
   function updateSound() {
+    $('immersive-sound').setAttribute('aria-pressed', String(sound));
+    $('immersive-sound').firstChild.textContent = sound ? '音效开 ' : '音效关 ';
     $('sound-toggle').setAttribute('aria-pressed', String(sound));
     $('sound-toggle').setAttribute('aria-label', sound ? '关闭音效' : '开启音效');
     $('sound-toggle').title = sound ? '关闭音效' : '开启音效';
@@ -72,7 +65,7 @@
     }
   }
   function primaryAction() {
-    if (!state.nut) { if (!state.remaining) { state.changePack(state.pack); track('pack', state.pack); } if (state.take()) track('take'); visuals.take(); render(); }
+    if (!state.nut) { if (!state.remaining) { changePack(state.pack); } if (state.take()) track('take'); visuals.take(); render(); }
     else chew();
   }
   $('chew-button').addEventListener('click', primaryAction);
@@ -82,14 +75,14 @@
   });
   $('spit-fibers').addEventListener('click', () => { if (state.spitFibers()) { track('spit'); visuals.spit(false, state.nut); immersive?.scene?.spit(false, state.nut); playSound('spit'); render(); toast(immersive?.active ? '碎渣已向前吐出，落在地面上。' : '碎渣已吐入虚拟收集盘。'); } });
   $('spit-nut').addEventListener('click', () => { const nut = state.nut; if (state.spitNut()) { track('discard'); stopAuto(); visuals.spit(true, nut); immersive?.scene?.spit(true, nut); playSound('spit'); render(); toast('已吐出槟榔。要不要喝口水，歇一会？'); } });
-  function changePack(value) { if (state.changePack(value)) { track('pack', value); render(); toast(`已换成 ${value} 档虚拟包装，内含 ${state.capacity} 颗。${state.nut ? '口中这颗保留。' : ''}`); } }
+  function changePack(value) { if (state.changePack(value)) { track('pack', value); render(); openPackEffect(immersive?.active ? document.querySelector('.immersive-stage') : $('stage'), value, state.capacity); playSound('pack'); toast(`已换成 ${value} 档虚拟包装，内含 ${state.capacity} 颗。${state.nut ? '口中这颗保留。' : ''}`); } }
   document.querySelectorAll('[data-pack]').forEach(button => button.addEventListener('click', () => changePack(Number(button.dataset.pack))));
   $('refill-pack').addEventListener('click', () => changePack(state.pack));
   $('light-cigarette').addEventListener('click', () => { if (state.light()) { track('light'); render(); toast('仅在屏幕里模拟。现实中建议戒槟榔、戒烟。'); } });
-  $('inhale').addEventListener('click', () => { if (state.inhale()) { track('inhale'); visuals.inhale(); immersive?.scene?.inhale(); playSound('smoke'); render(); } });
-  $('exhale').addEventListener('click', () => { if (state.exhale()) { track('exhale'); visuals.exhale(); immersive?.scene?.exhale(); playSound('smoke'); render(); } });
+  $('inhale').addEventListener('click', () => { if (state.inhale()) { track('inhale'); visuals.inhale(); immersive?.scene?.inhale(); playSound('inhale'); render(); } });
+  $('exhale').addEventListener('click', () => { if (state.exhale()) { track('exhale'); visuals.exhale(); immersive?.scene?.exhale(); playSound('exhale'); render(); } });
   $('extinguish').addEventListener('click', () => { if (state.extinguish()) { track('extinguish'); render(); toast('已经熄灭。给自己一个清新的停顿。'); } });
-  $('sound-toggle').addEventListener('click', () => { sound = !sound; try { localStorage.setItem('chew-sound', String(sound)); } catch {} updateSound(); toast(sound ? '音效已开启' : '音效已关闭'); if (sound) playSound('chew'); });
+  $('sound-toggle').addEventListener('click', () => { sound = !sound; try { localStorage.setItem('chew-sound', String(sound)); } catch {} updateSound(); toast(sound ? '音效已开启' : '音效已关闭'); if (sound) playSound('chew'); else audio?.stop(); });
   function showPage(name) {
     if (immersive?.active) immersive.close();
     if (!['experience', 'pause', 'guide', 'progress'].includes(name)) name = 'experience';

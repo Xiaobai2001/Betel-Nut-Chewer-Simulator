@@ -8,7 +8,7 @@ Git 仓库保存源码、构建工具、测试、文档与部署脚本。GitHub 
 
 ## 生成发布文件
 
-当前 1.3.0 只发布账号网页版：运行 `npm.cmd run prepare:accounts`，上传 `成品/账号网页版部署/` 内的 WebAccounts.zip、对应 .sha256 和 Source.zip 到 v1.3.0 Release，说明见 `docs/release-notes.md`。不要把 1.1.1 EXE / APK 重命名成 1.3.0。数据库连接配置在 `.private/server.json`，不进 Git 或 ZIP。
+当前 1.4.0 只发布账号网页版：运行 `npm.cmd run prepare:accounts`，上传 `成品/账号网页版部署/` 内的 WebAccounts.zip、对应 .sha256 和 Source.zip 到 v1.4.0 Release，说明见 `docs/release-notes.md`。不要把 1.1.1 EXE / APK 重命名成 1.4.0。数据库连接配置在 `.private/server.json`，不进 Git 或 ZIP。
 
 以下完整客户端构建流程留待以后重新构建 EXE / APK 时使用：
 

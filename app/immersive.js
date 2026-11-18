@@ -87,7 +87,7 @@
       if (event.key === 'Escape' && this.active) { event.preventDefault(); this.close(); return; }
       if (event.repeat || event.isComposing || event.ctrlKey || event.metaKey || event.altKey || event.target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(event.target.tagName)) return;
       if (!this.actions.isExperience()) return;
-      const keys = { Space: 'chew-button', KeyQ: 'spit-fibers', KeyG: 'spit-nut', KeyL: 'light-cigarette', KeyI: 'inhale', KeyO: 'exhale', KeyX: 'extinguish' };
+      const keys = { Space: 'chew-button', KeyQ: 'spit-fibers', KeyG: 'spit-nut', KeyL: 'light-cigarette', KeyI: 'inhale', KeyO: 'exhale', KeyX: 'extinguish', KeyM: 'sound-toggle' };
       if (keys[event.code]) { event.preventDefault(); const target = $(keys[event.code]); if (!target.disabled) target.click(); return; }
       if (event.code === 'KeyF') { event.preventDefault(); this.active ? this.close() : this.open(); }
       else if (event.code === 'KeyA') { event.preventDefault(); this.actions.toggleAuto(); }

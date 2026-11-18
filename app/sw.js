@@ -1,5 +1,5 @@
-const CACHE = 'chew-simulator-v1.3.0';
-const FILES = ['./', './index.html', './styles.css', './immersive.css', './account.css', './account.js', './progress.css', './progress.js', './model.js', './visuals.js', './immersive-scene.js', './immersive.js', './app.js', './assets/icon.svg', './assets/icon.png', './manifest.webmanifest'];
+const CACHE = 'chew-simulator-v1.4.0';
+const FILES = ['./', './index.html', './styles.css', './immersive.css', './account.css', './account.js', './progress.css', './progress.js', './model.js', './visuals.js', './immersive-scene.js', './immersive.js', './sound.js', './pack-effect.js', './app.js', './assets/icon.svg', './assets/icon.png', './manifest.webmanifest'];
 self.addEventListener('install', event => { event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(FILES)).then(() => self.skipWaiting())); });
 self.addEventListener('activate', event => { event.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(key => key.startsWith('chew-simulator-') && key !== CACHE).map(key => caches.delete(key)))).then(() => self.clients.claim())); });
 self.addEventListener('fetch', event => { const url = new URL(event.request.url); if (url.origin !== self.location.origin || url.pathname.startsWith('/api/')) return; if (event.request.method === 'GET') event.respondWith(fetch(event.request).catch(() => caches.match(event.request))); });

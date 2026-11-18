@@ -4,11 +4,13 @@ const path = require('node:path');
 const Simulator = require('../app/model.js');
 const LegacySimulator = require('./legacy-model.cjs');
 const { ACTIVITY_FIELDS, summarizeProgress, validCheckin } = require('./progress.cjs');
+const { validBaseline, summarizeSavings, FIELDS: SAVINGS_FIELDS } = require('./savings.cjs');
+const { sameId } = require('./identity.cjs');
 const FIELDS = ['bites', 'nuts_started', 'nuts_completed', 'spits', 'discarded'];
 const blank = (fields = FIELDS) => Object.fromEntries(fields.map(key => [key, 0]));
 const dayInChina = (date = new Date()) => new Date(date.getTime() + 8 * 3600000).toISOString().slice(0, 10);
 function createPool(config) {
-  return mysql.createPool({ ...config, connectionLimit: 8, charset: 'utf8mb4', timezone: 'Z', dateStrings: true, supportBigNumbers: true });
+  return mysql.createPool({ ...config, connectionLimit: 8, charset: 'utf8mb4', timezone: 'Z', dateStrings: true, supportBigNumbers: true, bigNumberStrings: true });
 }
 async function initializeSchema(connection) {
   for (const sql of fs.readFileSync(path.join(__dirname, 'schema.sql'), 'utf8').split(';').map(s => s.trim()).filter(Boolean)) await connection.query(sql);
@@ -31,7 +33,7 @@ async function recordEvents(pool, userId, body, now = new Date()) {
     const initial = new Model(); initial._protocol = protocol;
     await connection.execute('INSERT INTO chew_runs (id, user_id, state_json) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE id=id', [body.runId, userId, JSON.stringify(initial)]);
     const [[run]] = await connection.execute('SELECT user_id,last_seq,state_json FROM chew_runs WHERE id=? FOR UPDATE', [body.runId]);
-    if (Number(run.user_id) !== Number(userId)) throw Object.assign(new Error('记录不属于当前账号。'), { status: 403 });
+    if (!sameId(run.user_id, userId)) throw Object.assign(new Error('记录不属于当前账号。'), { status: 403 });
     const saved = typeof run.state_json === 'string' ? JSON.parse(run.state_json) : run.state_json;
     if ((saved._protocol ?? 1) !== protocol) throw Object.assign(new Error('操作版本不匹配，请保留原始待同步记录。'), { status: 409 });
     const state = Object.assign(new Model(), saved);
@@ -91,6 +93,8 @@ async function getStats(pool, userId, now = new Date()) {
     const [rows] = await connection.execute(`SELECT day,${FIELDS.join(',')} FROM chew_daily WHERE user_id=? AND day BETWEEN ? AND ? ORDER BY day`, [userId, firstDay, today]);
     const [activityRows] = await connection.execute('SELECT * FROM chew_activity_daily WHERE user_id=? ORDER BY day', [userId]);
     const [checkins] = await connection.execute('SELECT day,nut_free,smoke_free FROM chew_checkins WHERE user_id=? AND day<=? ORDER BY day', [userId, today]);
+    const [[settings]] = await connection.execute('SELECT baseline FROM chew_savings_settings WHERE user_id=?', [userId]);
+    const baseline = settings ? (typeof settings.baseline === 'string' ? JSON.parse(settings.baseline) : settings.baseline) : null;
     await connection.commit();
     const total = { ...Object.fromEntries(FIELDS.map(key => [key, Number(baseTotal[key])])), ...blank(ACTIVITY_FIELDS) };
     for (const row of activityRows) for (const field of ACTIVITY_FIELDS) total[field] += Number(row[field]);
@@ -100,7 +104,7 @@ async function getStats(pool, userId, now = new Date()) {
       const row = { ...blank(), ...blank(ACTIVITY_FIELDS), ...rows.find(r => r.day === day), ...activityRows.find(r => r.day === day) };
       daily.push({ day, ...Object.fromEntries([...FIELDS, ...ACTIVITY_FIELDS].map(key => [key, Number(row[key])])) });
     }
-    return { timezone: 'Asia/Shanghai', total, today: daily[6], daily, progress: summarizeProgress(total, daily[6], checkins, today) };
+    return { timezone: 'Asia/Shanghai', total, today: daily[6], daily, savings: summarizeSavings(baseline, checkins, today), progress: summarizeProgress(total, daily[6], checkins, today) };
   } catch (error) { await connection.rollback(); throw error; }
   finally { connection.release(); }
 }
@@ -109,4 +113,11 @@ async function saveCheckin(pool, userId, body, now = new Date()) {
   await pool.execute('INSERT INTO chew_checkins (user_id,day,nut_free,smoke_free) VALUES (?,?,?,?) ON DUPLICATE KEY UPDATE nut_free=VALUES(nut_free),smoke_free=VALUES(smoke_free),updated_at=UTC_TIMESTAMP(3)', [userId, body.day, body.nutFree, body.smokeFree]);
   return { ok: true };
 }
-module.exports = { createPool, initializeSchema, validateEvents, recordEvents, getStats, saveCheckin, dayInChina };
+async function saveSavings(pool, userId, body) {
+  if (body.baseline === null) { await pool.execute('DELETE FROM chew_savings_settings WHERE user_id=?', [userId]); return { ok: true }; }
+  if (!validBaseline(body.baseline)) throw Object.assign(new Error('请填写有效的价格（最多两位小数，0–10000 元）和每日数量（0–500）。'), { status: 400 });
+  const baseline = Object.fromEntries(SAVINGS_FIELDS.map(key => [key, body.baseline[key]]));
+  await pool.execute('INSERT INTO chew_savings_settings (user_id,baseline) VALUES (?,?) ON DUPLICATE KEY UPDATE baseline=VALUES(baseline),updated_at=UTC_TIMESTAMP(3)', [userId, JSON.stringify(baseline)]);
+  return { ok: true };
+}
+module.exports = { saveSavings, createPool, initializeSchema, validateEvents, recordEvents, getStats, saveCheckin, dayInChina };

@@ -77,7 +77,7 @@
       $('cloud-status').textContent = logged ? '账号统计已开启' : this.expired ? '请重新登录' : '访客体验';
       $('account-auth').hidden = logged; $('account-stats').hidden = !logged;
       $('account-title').textContent = logged ? '我的模拟记录' : '留下一份自己的记录';
-      $('account-subtitle').textContent = logged ? this.user.displayName + ' · @' + this.user.username : '登录后，模拟记录可在不同设备间查看。';
+      $('account-subtitle').textContent = logged ? this.user.displayName + ' · @' + this.user.username + ' · ID ' + this.user.id : '登录后，模拟记录可在不同设备间查看。';
       $('register-fields').hidden = this.mode !== 'register';
       $('account-confirm').required = this.mode === 'register';
       $('account-register-tab').hidden = !this.registration;

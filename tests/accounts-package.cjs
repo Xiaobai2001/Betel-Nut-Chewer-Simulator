@@ -7,7 +7,7 @@ const mysql = require('../server/node_modules/mysql2/promise');
 const { initializeSchema } = require('../server/store.cjs');
 (async () => {
   if (!process.env.TEST_MYSQL_PORT) throw new Error('Explicit isolated TEST_MYSQL_PORT required.');
-  const folder = path.resolve('.build/accounts-package-check');
+  const folder = path.resolve(process.env.TEST_ACCOUNTS_PACKAGE || '.build/accounts-package-check');
   const database = 'chew_test_package_' + Date.now();
   const options = { host: '127.0.0.1', port: Number(process.env.TEST_MYSQL_PORT), user: 'root', password: process.env.TEST_MYSQL_PASSWORD || '' };
   const connection = await mysql.createConnection(options);
@@ -21,7 +21,7 @@ const { initializeSchema } = require('../server/store.cjs');
   let browser;
   try {
     let ready = false;
-    for (let i = 0; i < 50; i++) { try { const health = await (await fetch(localOrigin + '/api/health')).json(); if (health.ok) { ready = true; break; } } catch {} await new Promise(resolve => setTimeout(resolve, 100)); }
+    for (let i = 0; i < 50; i++) { try { const health = await (await fetch(localOrigin + '/api/health')).json(); if (health.ok && health.version === require('../package.json').version) { ready = true; break; } } catch {} await new Promise(resolve => setTimeout(resolve, 100)); }
     assert.ok(ready, output);
     browser = await chromium.launch({ channel: 'chrome', headless: true });
     const context = await browser.newContext({ serviceWorkers: 'block' });

@@ -86,7 +86,7 @@ def write_manifest(site: Path, version: str) -> None:
 def write_delivery_index() -> None:
     (ROOT / '成品/README.md').write_text('''# 交付文件导航
 
-- `账号网页版部署/`：当前 1.3.0，使用 Node.js + MySQL，上传 WebAccounts.zip 并按 README 操作；支持注册和统计。
+- `账号网页版部署/`：当前 1.4.0，使用 Node.js + MySQL，上传 WebAccounts.zip 并按 README 操作；支持账号、统计、成就与现实戒除省钱估算。旧账号版请在新目录解压后运行 Update-Accounts.ps1。
 - `网页服务器部署/`：纯静态 IIS 包，仅访客模拟，不运行账号后台。
 - `本机运行/`：本机双击的 EXE、安卓 APK 和离线网页版。
 - `云服务器部署/`：包含网页和客户端安装包下载的完整部署包，留待后续使用。
@@ -121,7 +121,7 @@ def main() -> None:
                 destination = delivery / relative
                 destination.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copy2(source, destination)
-        for name in ['Install-Accounts.ps1', 'Reset-Password.ps1']:
+        for name in ['Install-Accounts.ps1', 'Reset-Password.ps1', 'Update-Accounts.ps1']:
             shutil.copy2(ROOT / 'deploy/windows-server' / name, delivery / name)
         (delivery / 'docs').mkdir()
         shutil.copy2(ROOT / 'docs/accounts-server.md', delivery / 'README.md')

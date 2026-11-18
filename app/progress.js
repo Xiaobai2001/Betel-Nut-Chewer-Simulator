@@ -14,11 +14,15 @@
       $('checkin-day').addEventListener('change', () => { this.fillCheckin(); this.editing = true; });
       for (const id of ['checkin-nut', 'checkin-smoke']) $(id).addEventListener('change', () => { this.editing = true; $('checkin-feedback').textContent = '尚未保存，请按实际情况确认。'; });
       $('checkin-form').addEventListener('submit', event => { event.preventDefault(); this.saveCheckin(); });
+      $('savings-form').addEventListener('input', () => { this.savingsEditing = true; $('savings-feedback').textContent = '尚未保存。'; });
+      $('savings-form').addEventListener('submit', event => { event.preventDefault(); this.saveSavings(false); });
+      $('savings-clear').addEventListener('click', () => this.saveSavings(true));
       this.setUser(null);
     }
     setUser(user) {
       if (this.user?.id === user?.id && this.initialized) return;
-      this.initialized = true; this.user = user; this.data = null; this.editing = false;
+      this.initialized = true; this.user = user; this.data = null; this.editing = false; this.savingsEditing = false;
+      $('savings-form').reset(); $('savings-feedback').textContent = ''; $('savings-total').textContent = '尚未设置'; $('savings-breakdown').replaceChildren();
       $('progress-content').hidden = true; $('progress-guest').hidden = false;
       $('progress-login').hidden = !!user;
       $('progress-guest').querySelector('h2').textContent = user ? '正在同步你的记录…' : '这是属于你的记录。';
@@ -28,9 +32,9 @@
     }
     render(data) {
       if (!this.user || data.accountId !== this.user.id) return;
-      if (!data.progress) { this.data = null; $('progress-content').hidden = true; $('progress-guest').hidden = false; $('progress-guest').querySelector('p').textContent = '请将服务器升级到 1.3.0，以读取成就和包装记录。'; return; }
+      if (!data.progress) { this.data = null; $('progress-content').hidden = true; $('progress-guest').hidden = false; $('progress-guest').querySelector('p').textContent = '请将服务器升级到 1.4.0，以读取完整记录。'; return; }
       this.data = data; $('progress-content').hidden = false; $('progress-guest').hidden = true; $('progress-error').textContent = '';
-      this.drawUsage(); this.drawAchievements(); this.drawReality();
+      this.drawUsage(); this.drawAchievements(); this.drawReality(); this.drawSavings();
       const rows = data.daily.slice().reverse().map(row => {
         const tr = make('tr');
         for (const value of [row.day, row.nuts_started, row.nuts_completed, row.cigarettes_lit, row.puffs, row.breaths]) tr.append(make('td', '', value));
@@ -133,6 +137,39 @@
         return button;
       }));
       this.markSelectedDay();
+    }
+    drawSavings() {
+      const value = this.data.savings;
+      const money = cents => '¥ ' + (cents / 100).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      $('savings-save').disabled = !value;
+      $('savings-clear').disabled = !value?.configured;
+      $('savings-total').textContent = value?.configured ? money(value.totalCents) : '尚未设置';
+      $('savings-today').textContent = value?.configured ? '今天暂估 ' + money(value.todayCents) : value ? '填写原来的用量与价格后开始估算' : '请先将服务器升级至 1.4.0';
+      $('savings-breakdown').replaceChildren(...(value?.configured ? [
+        make('p', '', '槟榔 · 确认 ' + value.nutDays + ' 天 · ' + money(value.nutCents)),
+        make('p', '', '香烟 · 确认 ' + value.smokeDays + ' 天 · ' + money(value.smokeCents))
+      ] : []));
+      if (!this.savingsEditing) {
+        const baseline = value?.baseline;
+        $('savings-tier').value = baseline?.nutTier || 50;
+        for (const [id, key, divisor] of [['savings-nut-price','nutPriceCents',100],['savings-nut-count','nutsPerDay',1],['savings-smoke-price','smokePriceCents',100],['savings-smoke-count','cigarettesPerDay',1]]) $(id).value = baseline ? baseline[key] / divisor : '';
+      }
+    }
+    async saveSavings(clear) {
+      const account = this.actions.getAccount();
+      if (this.savingsBusy) return;
+      if (!account?.user || account.expired) { account?.open(); return; }
+      const id = account.user.id;
+      const baseline = clear ? null : { nutTier: Number($('savings-tier').value), nutPriceCents: Math.round(Number($('savings-nut-price').value) * 100), nutsPerDay: Number($('savings-nut-count').value), smokePriceCents: Math.round(Number($('savings-smoke-price').value) * 100), cigarettesPerDay: Number($('savings-smoke-count').value) };
+      this.savingsBusy = true; $('savings-save').disabled = true; $('savings-clear').disabled = true;
+      $('savings-feedback').textContent = '正在保存…';
+      try {
+        await account.api('savings', { accountId: id, baseline });
+        if (this.user?.id !== id) return;
+        this.savingsEditing = false; await account.loadStats();
+        if (this.user?.id === id) $('savings-feedback').textContent = clear ? '已清除花费设置，打卡和历史记录保留。' : '已保存到账号，全部现实打卡已按当前设置重新估算。';
+      } catch (error) { if (this.user?.id === id) $('savings-feedback').textContent = '尚未保存：' + error.message; }
+      finally { this.savingsBusy = false; if (this.data) this.drawSavings(); }
     }
     async saveCheckin() {
       const account = this.actions.getAccount();

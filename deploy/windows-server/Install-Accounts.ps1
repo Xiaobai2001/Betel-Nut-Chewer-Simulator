@@ -2,6 +2,30 @@
 [CmdletBinding()]
 param([string]$PublicOrigin = '', [int]$Port = 8081)
 $ErrorActionPreference = 'Stop'
+function Read-ValidatedPublicOrigin {
+  param([string]$Value, [string]$NodePath, [int]$WebPort)
+  while ($true) {
+    if ([string]::IsNullOrWhiteSpace($Value)) {
+      $Value = Read-Host "Public URL (REQUIRED, example http://101.201.68.203:$WebPort)"
+    }
+    try {
+      $env:CHEW_ORIGIN_TO_VALIDATE = $Value.Trim()
+      $normalized = & $NodePath -e @'
+try {
+  const url = new URL(process.env.CHEW_ORIGIN_TO_VALIDATE || '');
+  if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password || url.pathname !== '/' || url.search || url.hash) process.exit(2);
+  process.stdout.write(url.origin);
+} catch { process.exitCode = 2; }
+'@
+      $validationExit = $LASTEXITCODE
+    } finally {
+      Remove-Item Env:CHEW_ORIGIN_TO_VALIDATE -ErrorAction SilentlyContinue
+    }
+    if ($validationExit -eq 0 -and $normalized) { return ([string]$normalized).Trim() }
+    Write-Host 'A full http:// or https:// website address is required. Do not leave it blank or include a page path.' -ForegroundColor Yellow
+    $Value = ''
+  }
+}
 $root = if (Test-Path -LiteralPath (Join-Path $PSScriptRoot 'server')) { $PSScriptRoot } else { Split-Path (Split-Path $PSScriptRoot -Parent) -Parent }
 $root = [IO.Path]::GetFullPath($root)
 $node = (Get-Command node.exe -ErrorAction Stop).Source
@@ -22,11 +46,14 @@ if (-not (Test-Path -LiteralPath $configPath)) {
 }
 Push-Location $root
 try {
+  if (-not (Test-Path -LiteralPath $configPath)) {
+    $PublicOrigin = Read-ValidatedPublicOrigin -Value $PublicOrigin -NodePath $node -WebPort $Port
+    Write-Host ('Website address: ' + $PublicOrigin)
+  }
   if ($existing) { Stop-ScheduledTask -TaskName $taskName }
   & $npm ci --prefix server --omit=dev --no-audit --no-fund
   if ($LASTEXITCODE -ne 0) { throw 'Dependency installation failed. Check the server Internet connection and retry.' }
   & {
-    if ((-not (Test-Path -LiteralPath $configPath)) -and (-not $PublicOrigin)) { $PublicOrigin = Read-Host 'Public URL without trailing slash (example http://101.201.68.203:8081)' }
     if (Test-Path -LiteralPath $configPath) { Write-Host 'Upgrading database schema. Existing accounts and private configuration will be preserved.' }
     $adminUser = Read-Host 'MySQL admin user (Enter = root)'
     if (-not $adminUser) { $adminUser = 'root' }
@@ -42,7 +69,7 @@ try {
       $env:CHEW_PORT = [string]$Port
       $env:CHEW_CONFIG = $configPath
       & $node server/setup.cjs
-      if ($LASTEXITCODE -ne 0) { throw 'Database setup failed. Check MySQL credentials and service status.' }
+      if ($LASTEXITCODE -ne 0) { throw 'Server setup failed. Read the specific Setup failed message above for the cause.' }
     } finally {
       [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($pointer)
       'CHEW_ADMIN_USER','CHEW_ADMIN_PASSWORD','CHEW_DB_PORT','CHEW_PUBLIC_ORIGIN','CHEW_PORT','CHEW_CONFIG' | ForEach-Object { Remove-Item -LiteralPath "Env:$_" -ErrorAction SilentlyContinue }
@@ -72,10 +99,11 @@ try {
     New-NetFirewallRule -Name $ruleName -DisplayName 'Chew Simulator accounts HTTP' -Description 'Chew Simulator accounts web server' -Direction Inbound -Protocol TCP -LocalPort $Port -Action Allow | Out-Null
   }
   Start-ScheduledTask -TaskName $taskName
+  $expectedVersion = (Get-Content -LiteralPath (Join-Path $root 'server\package.json') -Raw | ConvertFrom-Json).version
   $healthy = $false
   for ($i = 0; $i -lt 15; $i++) {
     Start-Sleep -Seconds 1
-    try { $health = Invoke-RestMethod -Uri "http://127.0.0.1:$Port/api/health" -TimeoutSec 2; if ($health.ok) { $healthy = $true; break } } catch {}
+    try { $health = Invoke-RestMethod -Uri "http://127.0.0.1:$Port/api/health" -TimeoutSec 2; if ($health.ok -and $health.version -eq $expectedVersion) { $healthy = $true; break } } catch {}
   }
   if (-not $healthy) { throw 'Health check failed. See docs/accounts-server.md for diagnosis.' }
   Write-Host ('Ready: ' + $config.publicOrigin) -ForegroundColor Green

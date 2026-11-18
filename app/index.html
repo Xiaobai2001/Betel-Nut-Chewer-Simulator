@@ -19,6 +19,8 @@
   <script src="immersive.js" defer></script>
   <script src="account.js" defer></script>
   <script src="progress.js" defer></script>
+  <script src="sound.js" defer></script>
+  <script src="pack-effect.js" defer></script>
   <script src="app.js" defer></script>
 </head>
 <body>
@@ -48,7 +50,7 @@
       <button class="nav-item" data-page="guide"><svg><use href="#i-info"/></svg>使用说明</button>
     </nav>
     <div class="sidebar-note"><span class="mini-leaf">✳</span><h3>好奇留在这里，<br>健康留给自己。</h3><p>一次虚拟体验，<br>也是一次放下的机会。</p><button class="text-link" data-open-pause>休息一小会 <svg><use href="#i-arrow"/></svg></button></div>
-    <div class="sidebar-footer"><span class="online-dot"></span>纯模拟 · 无真实消费<small>VIRTUAL EXPERIENCE　 /　 V1.3.0</small></div>
+    <div class="sidebar-footer"><span class="online-dot"></span>纯模拟 · 无真实消费<small>VIRTUAL EXPERIENCE　 /　 V1.4.0</small></div>
   </aside>
 
   <main>
@@ -122,6 +124,21 @@
             <button id="progress-breath" class="journal-breath"><svg><use href="#i-cup"/></svg><span><strong>想嚼、想抽时，先停一分钟。</strong><small>做一次呼吸练习 →</small></span></button>
           </aside>
         </div>
+        <section class="savings-card card" aria-labelledby="savings-title">
+          <div class="journal-section-title"><div><span class="eyebrow">MORE LEFT FOR YOURSELF</span><h2 id="savings-title">把省下的，留给生活。</h2></div><span>现实戒除 · 估算</span></div>
+          <div class="savings-summary"><div><span>累计预计省下</span><strong id="savings-total">尚未设置</strong><small id="savings-today">填写原来的用量与价格后开始估算</small></div><div id="savings-breakdown"></div></div>
+          <details id="savings-settings"><summary>设置原来的日常花费</summary>
+            <form id="savings-form"><div class="savings-fields">
+              <label>槟榔包装规格<select id="savings-tier"><option value="50">50 档 · 每袋 10 颗</option><option value="100">100 档 · 每袋 15 颗</option><option value="200">200 档 · 每袋 20 颗</option></select></label>
+              <label>槟榔实际价格（元 / 袋）<input id="savings-nut-price" type="number" min="0" max="10000" step="0.01" required placeholder="填写实际价格"></label>
+              <label>以前每天嚼几颗<input id="savings-nut-count" type="number" min="0" max="500" step="1" required placeholder="不使用填 0"></label>
+              <label>香烟实际价格（元 / 盒，20 根）<input id="savings-smoke-price" type="number" min="0" max="10000" step="0.01" required placeholder="填写实际价格"></label>
+              <label>以前每天抽几根<input id="savings-smoke-count" type="number" min="0" max="500" step="1" required placeholder="不使用填 0"></label>
+            </div><p class="journal-caption">未使用的项目价格和数量都填 0。累计估算 = 各项现实戒除打卡天数 × 原来每日花费；按当前设置回算全部已保存打卡。修改设置或撤回打卡后会重算。模拟操作不算省钱，今天的金额只是暂估。</p>
+            <div class="savings-actions"><button id="savings-save" class="primary-button" type="submit">保存到账号</button><button id="savings-clear" type="button">清除花费设置</button></div>
+            <p id="savings-feedback" class="journal-caption" role="status"></p></form>
+          </details><p class="journal-caption">按个人填报估算，并非实际账单；未设置前不显示金额。设置和记录随账号同步。</p>
+        </section>
         <div class="journal-section-title"><div><span class="eyebrow">SMALL CHOICES, REAL PROGRESS</span><h2>值得记住的小改变。</h2></div><span id="achievement-count"></span></div>
         <p class="journal-caption">成就记录觉察、主动放下与现实打卡。用量提醒没有奖励，也不是需要完成的挑战。</p>
         <div id="achievement-grid" class="achievement-grid"></div>
@@ -135,11 +152,11 @@
     <header class="immersive-header"><div class="immersive-brand"><span class="brand-icon"><svg><use href="#i-leaf"/></svg></span><div><span class="immersive-eyebrow">THE CHEW ROOM / DAYLIGHT</span><h2 id="immersive-title">把这一刻，放大。</h2></div></div><button id="close-immersive" class="immersive-exit">退出沉浸 <kbd>Esc</kbd></button></header>
     <div class="immersive-workspace">
       <div class="immersive-stage">
-        <div class="scene-topline"><span><i></i><span id="immersive-view-label">第一人称 · 无嘴巴</span></span><span>拖动旋转 / 滚轮缩放</span></div>
+        <div class="scene-topline"><span><i></i><span id="immersive-view-label">第一人称 · 无嘴巴</span></span><span>拖动槟榔旋转 · 拖动香烟移动</span></div>
         <div id="immersive-scene"></div>
         <div class="scene-metrics"><div><span>本颗咀嚼</span><strong id="immersive-bites">00</strong></div><div><span>形态变化</span><strong id="immersive-wear">0<small>%</small></strong></div><p id="immersive-nut-status">饱满完整</p></div>
         <div class="scene-hint" id="immersive-scene-hint">拖动槟榔，看看另一面。</div>
-        <div class="scene-tools"><button id="rotate-left" aria-label="向左旋转槟榔">↶</button><button id="rotate-right" aria-label="向右旋转槟榔">↷</button><button id="reset-rotation">复位 <kbd>R</kbd></button><label>缩放<input id="immersive-zoom" type="range" min="65" max="180" value="100" aria-label="槟榔缩放"></label><button id="clear-floor">清理地面</button></div>
+        <div class="scene-tools"><button id="rotate-left" aria-label="向左旋转槟榔">↶</button><button id="rotate-right" aria-label="向右旋转槟榔">↷</button><button id="reset-rotation">复位 <kbd>R</kbd></button><label>缩放<input id="immersive-zoom" type="range" min="65" max="180" value="100" aria-label="槟榔缩放"></label><button id="clear-floor">清理地面</button><button id="immersive-sound" data-action="sound-toggle" aria-pressed="false">音效关 <kbd>M</kbd></button></div>
       </div>
       <aside class="immersive-rail">
         <section class="immersive-control-card"><div class="immersive-card-title"><span>01 / 咀嚼</span><span id="immersive-pack-label">50 档</span></div><h3>每一口，都看得见。</h3><div class="immersive-progress"><div id="immersive-progress-bar"></div></div><button data-action="chew-button" class="immersive-primary"><span>嚼一口</span><kbd>Space</kbd></button><div class="immersive-action-row"><button data-action="spit-fibers">吐渣 <kbd>Q</kbd></button><button data-action="spit-nut">吐出整颗 <kbd>G</kbd></button></div><button id="immersive-auto" class="immersive-auto" aria-pressed="false"><span>○ 自动咀嚼</span><kbd>A</kbd></button><p id="immersive-fibers">口中暂无碎渣</p></section>
@@ -161,7 +178,7 @@
         <p id="auth-error" class="account-error" role="status"></p>
         <button id="account-submit" type="submit">登录</button>
       </form>
-      <p class="account-note">访客可直接体验。登录后从新的模拟开始，之前的访客记录不计入账号。本站保存账号、昵称、模拟统计和你自愿填写的现实戒除打卡；不收集手机号。忘记密码请联系网站维护者。</p>
+      <p class="account-note">访客可直接体验。登录后从新的模拟开始，之前的访客记录不计入账号。本站保存账号、昵称、模拟统计、你自愿填写的现实戒除打卡与花费设置；不收集手机号。忘记密码请联系网站维护者。</p>
     </div>
     <div id="account-stats" hidden>
       <div class="account-toolbar"><span id="stats-sync" role="status">正在读取记录…</span><button id="stats-refresh">同步并刷新</button><button id="account-logout">退出登录</button></div>

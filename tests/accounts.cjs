@@ -81,6 +81,8 @@ const { verifyPassword } = require('../server/security.cjs');
     for (let i = 0; i < 14; i++) await request('login', { username: 'alice', password: 'wrong-password' }, null, 401);
     await request('login', { username: 'alice', password: 'wrong-password' }, null, 429);
     console.log('PASS: database survives backend restart, logout/expiry revoke sessions, login throttling');
+    await stop(); await start();
+    await require('./savings-integration.cjs')(request, pool, { ...config, database });
     if (process.argv.includes('--browser')) {
       await stop(); await start();
       await require('./accounts-browser.cjs')(origin, pool);

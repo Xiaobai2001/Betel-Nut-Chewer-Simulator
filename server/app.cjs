@@ -2,7 +2,9 @@ const express = require('express');
 const path = require('node:path');
 const crypto = require('node:crypto');
 const { hashPassword, verifyPassword, digestToken, accountInput } = require('./security.cjs');
-const { validateEvents, recordEvents, getStats, saveCheckin } = require('./store.cjs');
+const { validateEvents, recordEvents, getStats, saveCheckin, saveSavings } = require('./store.cjs');
+
+const { publicId, sameId } = require('./identity.cjs');
 
 async function createApp(pool, config) {
   const app = express();
@@ -41,7 +43,7 @@ async function createApp(pool, config) {
     const token = tokenFrom(req);
     if (token) {
       const [[user]] = await pool.execute('SELECT u.id,u.username,u.display_name FROM chew_sessions s JOIN chew_users u ON u.id=s.user_id WHERE s.token_hash=? AND s.expires_at>UTC_TIMESTAMP(3)', [digestToken(token)]);
-      if (user) { req.user = { id: Number(user.id), username: user.username, displayName: user.display_name }; req.sessionToken = token; }
+      if (user) { req.user = { id: publicId(user.id), username: user.username, displayName: user.display_name }; req.sessionToken = token; }
     }
     next();
   }
@@ -52,9 +54,9 @@ async function createApp(pool, config) {
     const token = crypto.randomBytes(32).toString('base64url');
     await pool.execute('INSERT INTO chew_sessions (token_hash,user_id,expires_at) VALUES (?,?,DATE_ADD(UTC_TIMESTAMP(3),INTERVAL 14 DAY))', [digestToken(token), user.id]);
     res.cookie('chew_session', token, { ...cookieOptions, maxAge: 14 * 86400000 });
-    return { id: Number(user.id), username: user.username, displayName: user.display_name };
+    return { id: publicId(user.id), username: user.username, displayName: user.display_name };
   }
-  app.get('/api/health', async (req, res) => { await pool.query('SELECT 1'); res.json({ ok: true, version: '1.3.0' }); });
+  app.get('/api/health', async (req, res) => { await pool.query('SELECT 1'); res.json({ ok: true, version: '1.4.0' }); });
   app.get('/api/session', authenticate, (req, res) => res.json({ user: req.user || null, registration: config.allowRegistration !== false }));
   app.post('/api/register', rateLimit('register', 5, 3600000), async (req, res) => {
     if (config.allowRegistration === false) return res.status(403).json({ error: '本站暂未开放注册。' });
@@ -75,17 +77,21 @@ async function createApp(pool, config) {
     res.json({ user: await newSession(req, res, user) });
   });
   app.post('/api/logout', authenticate, async (req, res) => {
-    if (req.user && req.body?.accountId !== req.user.id) return res.status(403).json({ error: '登录账号已变化，请刷新页面。' });
+    if (req.user && !sameId(req.body?.accountId, req.user.id)) return res.status(403).json({ error: '登录账号已变化，请刷新页面。' });
     if (req.sessionToken) await pool.execute('DELETE FROM chew_sessions WHERE token_hash=?', [digestToken(req.sessionToken)]);
     res.clearCookie('chew_session', cookieOptions); res.json({ ok: true });
   });
   app.get('/api/stats', authenticate, required, async (req, res) => res.json({ accountId: req.user.id, ...await getStats(pool, req.user.id) }));
+  app.post('/api/savings', authenticate, required, rateLimit('savings', 30, 60000), async (req, res) => {
+    if (!sameId(req.body?.accountId, req.user.id)) return res.status(403).json({ error: '登录账号已变化，请刷新后重新保存。' });
+    res.json(await saveSavings(pool, req.user.id, req.body));
+  });
   app.post('/api/checkin', authenticate, required, rateLimit('checkin', 30, 60000), async (req, res) => {
-    if (req.body?.accountId !== req.user.id) return res.status(403).json({ error: '登录账号已变化，请刷新后重新打卡。' });
+    if (!sameId(req.body?.accountId, req.user.id)) return res.status(403).json({ error: '登录账号已变化，请刷新后重新打卡。' });
     res.json(await saveCheckin(pool, req.user.id, req.body));
   });
   app.post(['/api/events', '/api/events-v2'], authenticate, required, rateLimit('events', 180, 60000), async (req, res) => {
-    if (req.body?.accountId !== req.user.id) return res.status(403).json({ error: '登录账号已变化，请重新登录对应账号后同步。' });
+    if (!sameId(req.body?.accountId, req.user.id)) return res.status(403).json({ error: '登录账号已变化，请重新登录对应账号后同步。' });
     if (req.path === '/api/events-v2' && req.body?.protocol !== 2) return res.status(400).json({ error: '此接口需要新版操作协议。' });
     if (!validateEvents(req.body)) return res.status(400).json({ error: '无效的操作记录。' });
     res.json(await recordEvents(pool, req.user.id, req.body));

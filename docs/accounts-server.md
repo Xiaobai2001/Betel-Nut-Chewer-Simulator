@@ -1,11 +1,11 @@
-# 账号网页版 1.3.0：Windows Server + MySQL
+# 账号网页版 1.4.0：Windows Server + MySQL
 
 本版包含访客注册、登录、槟榔与香烟用量、可视包装、戒除成就、现实打卡，以及全屏底部操作区。仅发布网页版；旧 EXE / APK 仍是 1.1.1 离线版，没有账号或 OTA。
 
 ## 最短部署步骤（全部在云服务器操作）
 
 1. 安装官方 **Node.js 24 LTS（Windows x64）**，安装后重新打开 PowerShell。服务器需要能访问 npm 下载依赖。已有 MySQL 8.0.33 可继续使用。
-2. 上传并完整解压 `ChewSimulator-1.3.0-WebAccounts.zip` 到 **`C:\ChewSimulator`**。目录内应直接看到 `app`、`server` 和 `Install-Accounts.ps1`。
+2. 上传并完整解压 `ChewSimulator-1.4.0-WebAccounts.zip` 到 **`C:\ChewSimulator`**。目录内应直接看到 `app`、`server` 和 `Install-Accounts.ps1`。
 3. 以管理员身份打开 **Windows PowerShell**，逐行运行：
 
 ```powershell
@@ -21,6 +21,15 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\Install-Accounts.ps1
 | MySQL admin user | 回车，默认 `root` |
 | Local MySQL port | 回车，默认 `3306` |
 | MySQL admin password | 你设置的数据库管理密码；输入时不显示字符 |
+
+Public URL 是必填项，括号里的地址只是示例，不是回车默认值。若旧安装包出现 `Set CHEW_PUBLIC_ORIGIN to the full public origin`，说明网址为空或格式不正确，发生在连接数据库之前。在当前解压目录的管理员 PowerShell 中运行下面两行即可重试，无需重新下载：
+
+```powershell
+Set-ExecutionPolicy -Scope Process Bypass -Force
+.\Install-Accounts.ps1 -PublicOrigin 'http://101.201.68.203:8081'
+```
+
+新版安装脚本会在询问数据库密码之前检查网址，空值或错误格式会重新提示；网址末尾的 / 会自动去除。
 
 脚本自动安装后台依赖，创建 `chew_simulator` 数据库和表、随机密码的专用数据库账号，保存私有配置，设置 Windows 开机任务并启动。账号表与统计表不会因重复安装而清空。已有 1.2.0 的服务器也要重新运行本脚本，输入管理凭据初始化新增表，不能只更新 HTML。网页注册的账号不是 MySQL 用户。
 
@@ -73,7 +82,7 @@ Get-ScheduledTaskInfo -TaskName ChewSimulatorAccounts
 Invoke-RestMethod http://127.0.0.1:8081/api/health
 ```
 
-正常健康检查返回 `ok: true` 和 `version: 1.3.0`。用公网地址测试注册和登录；如果配置的是公网 URL，从 localhost 页面提交注册会被来源校验拒绝，这是预期行为。
+正常健康检查返回 `ok: true` 和 `version: 1.4.0`。用公网地址测试注册和登录；如果配置的是公网 URL，从 localhost 页面提交注册会被来源校验拒绝，这是预期行为。
 
 停止、启动：
 
@@ -84,17 +93,31 @@ Start-ScheduledTask -TaskName ChewSimulatorAccounts
 
 修改配置后也用以上两行重启。数据库用户、密码和网站地址都在 `.private/server.json`；一般不需要手工修改。
 
-## 更新和回退
+## 直接更新已有账号版（推荐）
 
-1. 使用 MySQL 自带备份功能备份 `chew_simulator`，并单独安全备份 `.private/server.json`。备份不能放在公开 app 目录中。
-2. 停止 `ChewSimulatorAccounts`，将旧 `app`、`server`、部署脚本备份到另一个私有目录。
-3. 把新版本解压覆盖到同一个 `C:\ChewSimulator`，**保留原 .private 目录和数据库**。
-4. 再次运行 `Install-Accounts.ps1`；它保留已有连接配置和账号数据，重新安装锁定依赖，并再次提示输入 MySQL 管理凭据以创建新增表，然后启动。
-5. 验证登录、累计统计、全屏按钮以及手机操作。
+**在云服务器上操作。不要先把新文件覆盖进旧安装目录，也不要删除数据库或 `.private`。**
 
-不要删除再创建数据库，不要把服务迁到新目录而漏掉原私有配置。1.3.0 以 CREATE TABLE IF NOT EXISTS 新增活动统计和现实打卡两张表，不修改或清空 1.2.0 原表。旧待上传事件仍按旧版每包 8 颗重放；新事件采用新容量。旧版没有香烟、呼吸或打卡记录，不会凭空补齐。重复运行迁移不会重复累计数据。
+1. 将 `ChewSimulator-1.4.0-WebAccounts.zip` 完整解压到新的临时目录，例如 **`C:\ChewUpdate`**，直接看到 `Update-Accounts.ps1`、`app` 和 `server`。旧服务仍在原目录。
+2. 以管理员身份打开 PowerShell，逐行运行：
 
-需要退回纯静态体验时停止新任务，再使用原 8080 网站。旧网站不展示账号统计；MySQL 数据仍保留。
+```powershell
+cd C:\ChewUpdate
+powershell -NoProfile -ExecutionPolicy Bypass -File .\Update-Accounts.ps1
+```
+
+3. 脚本从已有 `ChewSimulatorAccounts` 任务识别原安装目录，检查原 `.private/server.json`，停止该任务，使用原配置备份账号库及原应用文件。备份失败就停止更新。随后只把新版应用复制回原安装目录，再运行安装器。
+4. 提示时输入 MySQL 管理账号、端口和密码（密码隐藏）。旧网站地址和服务数据库配置继续使用，不用重新填写网址。安装器新增缺少的表，不重建、不清空账号和记录。
+5. 出现 `Update complete` 后，访问原网址，按 **Ctrl+F5** 刷新。`/api/health` 应显示 `1.4.0`，用原账号登录核对 ID、统计、成就和打卡。
+
+备份位于**原安装目录**的 `.private/backups/时间/`，含 `database.sql`、`server.json` 和旧应用。该目录含账号密码哈希与数据库配置，必须保持私有，不上传 GitHub 或放进 app/。SQL 备份保留原始 ID 与 AUTO_INCREMENT，只能由维护者导入一个**空数据库**进行恢复，再修改原私有配置指向恢复的库；不要直接往正在使用的库重复导入。
+
+更新失败会尝试恢复旧应用文件和依赖并启动原任务，保留备份和错误信息；不会自动覆盖或回滚数据库。若依赖下载/启动仍失败，按错误提示处理。新表采用增量创建，旧版本可继续读取旧表。**只有正常显示完成并验证页面后，才算服务器更新成功。**
+
+账号 ID 由同一个 MySQL 数据库主键自增分配，用户名唯一；并发注册也不复用 ID。大整数 ID 以精确字符串返回，避免 JavaScript 精度导致冲突。后续更新继续使用此更新入口、原配置和原数据库；跨服务器迁移需迁移整个数据库，不能拼接两套独立数据库的自增 ID。
+
+1.3.0 新增活动统计和现实打卡，1.4.0 仅新增花费设置表；原账号、密码、会话、统计和打卡保留。旧待上传事件继续按原协议补传。未同步前勿清浏览器数据，访问地址（协议、IP/域名、端口）应保持一致；修改地址前先同步旧地址下的待上传记录。
+
+需要退回纯静态体验时停止账号任务，再使用原 8080 网站；MySQL 数据仍保留。
 
 ## 忘记网站密码
 

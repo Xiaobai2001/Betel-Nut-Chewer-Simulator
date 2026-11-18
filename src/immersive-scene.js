@@ -12,6 +12,7 @@ const canvasTexture = (width, height, draw) => {
 class ImmersiveScene {
   constructor(host, state, flatVisuals, announce) {
     this.host = host; this.state = state; this.flat = flatVisuals; this.announce = announce;
+    this.smokePosition = null; this.smokeBounds = null;
     this.zoom = 1; this.yaw = -.3; this.pitch = .2;
     this.host.dataset.sceneView = 'first';
     this.lastChew = -10000; this.lastInhale = -10000; this.lastExhale = -10000;
@@ -25,7 +26,7 @@ class ImmersiveScene {
   }
   newCanvas() {
     this.canvas = document.createElement('canvas'); this.canvas.id = 'immersive-canvas'; this.canvas.tabIndex = 0;
-    this.canvas.setAttribute('aria-label', '三维槟榔。拖动旋转，滚轮缩放；也可用方向键旋转。');
+    this.canvas.setAttribute('aria-label', '三维场景。拖动槟榔旋转，拖动香烟移动；滚轮缩放槟榔，方向键旋转，R 复位。');
     this.canvas.setAttribute('role', 'img'); this.host.replaceChildren(this.canvas);
   }
   enableFallback() {
@@ -36,16 +37,24 @@ class ImmersiveScene {
   }
   bindPointer() {
     this.canvas.addEventListener('pointerdown', event => {
-      if (event.button !== 0) return;
-      this.pointer = { id: event.pointerId, x: event.clientX, y: event.clientY };
+      if (event.button !== 0 || this.pointer) return;
+      const rect = this.canvas.getBoundingClientRect(), x = event.clientX - rect.left, y = event.clientY - rect.top, box = this.smokeBounds;
+      const smoke = box && x >= box.x - 18 && x <= box.x + box.width + 18 && y >= box.y - 18 && y <= box.y + box.height + 18;
+      this.pointer = { id: event.pointerId, x: event.clientX, y: event.clientY, smoke };
+      this.host.dataset.dragTarget = smoke ? 'cigarette' : 'nut';
       this.canvas.setPointerCapture(event.pointerId); this.canvas.classList.add('dragging');
     });
     this.canvas.addEventListener('pointermove', event => {
       if (!this.pointer || this.pointer.id !== event.pointerId) return;
-      this.rotate((event.clientX - this.pointer.x) * .009, (event.clientY - this.pointer.y) * .008);
+      const dx = event.clientX - this.pointer.x, dy = event.clientY - this.pointer.y;
+      if (this.pointer.smoke) {
+        const position = this.smokePosition || this.defaultSmokePosition();
+        this.smokePosition = { x: clamp(position.x + dx / this.host.clientWidth, .16, .84), y: clamp(position.y + dy / this.host.clientHeight, .18, .80) };
+        this.host.dataset.smokePosition = JSON.stringify(this.smokePosition);
+      } else this.rotate(dx * .009, dy * .008);
       this.pointer.x = event.clientX; this.pointer.y = event.clientY;
     });
-    const release = () => { this.pointer = null; this.canvas.classList.remove('dragging'); };
+    const release = () => { this.host.dataset.dragTarget = ''; this.pointer = null; this.canvas.classList.remove('dragging'); };
     this.canvas.addEventListener('pointerup', release); this.canvas.addEventListener('pointercancel', release);
     this.canvas.addEventListener('lostpointercapture', release);
     this.canvas.addEventListener('wheel', event => {
@@ -61,7 +70,23 @@ class ImmersiveScene {
     this.host.dataset.rotation = `${this.yaw.toFixed(3)},${this.pitch.toFixed(3)}`;
   }
   setZoom(value) { this.zoom = clamp(Number(value) || 1, .65, 1.8); }
-  resetRotation() { this.yaw = -.3; this.pitch = .2; this.setZoom(1); this.host.dataset.rotation = '-0.300,0.200'; }
+  resetRotation() { this.smokePosition = null; this.host.dataset.smokePosition = ''; this.yaw = -.3; this.pitch = .2; this.setZoom(1); this.host.dataset.rotation = '-0.300,0.200'; }
+  defaultSmokePosition() { return { x: this.host.clientWidth / this.host.clientHeight < 1 ? .76 : .78, y: .66 }; }
+  screenPoint(x, y, z) {
+    const point = new THREE.Vector3(x * 2 - 1, 1 - y * 2, .5).unproject(this.camera);
+    const direction = point.sub(this.camera.position);
+    return direction.multiplyScalar((z - this.camera.position.z) / direction.z).add(this.camera.position);
+  }
+  publishSmokeBounds(box) { this.smokeBounds = box; this.host.dataset.cigaretteBounds = JSON.stringify(box); }
+  measureCigarette() {
+    this.cigarette.updateMatrixWorld(true);
+    const box = new THREE.Box3().setFromObject(this.cigarette), points = [];
+    for (const x of [box.min.x, box.max.x]) for (const y of [box.min.y, box.max.y]) for (const z of [box.min.z, box.max.z]) {
+      const p = new THREE.Vector3(x, y, z).project(this.camera); points.push({ x: (p.x + 1) * this.width / 2, y: (1 - p.y) * this.height / 2 });
+    }
+    const left = Math.min(...points.map(p => p.x)), top = Math.min(...points.map(p => p.y));
+    this.publishSmokeBounds({ x: left, y: top, width: Math.max(...points.map(p => p.x)) - left, height: Math.max(...points.map(p => p.y)) - top });
+  }
   init3D() {
     this.renderer = new THREE.WebGLRenderer({ canvas: this.canvas, antialias: true, alpha: true, powerPreference: 'high-performance' });
     this.renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 1.6));
@@ -237,19 +262,25 @@ class ImmersiveScene {
     const bite = time > 0 && time < 1 ? Math.sin(time * Math.PI) : 0;
     this.camera.position.set(0, 1.25, small ? 7.5 : 6.5); this.camera.lookAt(0, -.05, 0);
     if (!this.reduced) this.camera.position.y += bite * .035;
+    this.camera.updateMatrixWorld();
+    const unit = Math.abs(this.screenPoint(.5, 0, .7).y - this.screenPoint(.5, 1, .7).y) / height;
+    const nutScale = Math.min(height * .49, width * .48) * unit / 2.22;
     this.nut.visible = !!this.state.nut;
     if (this.state.nut) {
       this.updateNut(this.nut, this.state.nut.wear, this.state.nut.fibers);
-      this.nut.position.set(-.28, .3 - bite * .05, .7);
+      this.nut.position.copy(this.screenPoint(small ? .36 : .40, small ? .36 : .42, .7)); this.nut.position.y -= bite * .05;
       this.nut.rotation.set(this.pitch, this.yaw, -.12 + (this.reduced ? 0 : Math.sin(now / 3200) * .015));
-      this.nut.scale.set(this.zoom * (1 + bite * .05), this.zoom * (1 - bite * .16), this.zoom);
+      this.nut.scale.set(nutScale * this.zoom * (1 + bite * .05), nutScale * this.zoom * (1 - bite * .16), nutScale * this.zoom);
     }
     const c = this.state.cigarette;
     const hold = c.holding ? .6 : 0; const inhaleAge = now - this.lastInhale;
     const lift = inhaleAge < 900 ? Math.sin(inhaleAge / 900 * Math.PI) * .3 : 0;
-    this.cigarette.position.lerp(new THREE.Vector3(small ? .8 : 1.45, -.62 + hold * .25 + lift, 1.3 + hold * .7), Math.min(1, dt * 8));
+    const smokePosition = this.smokePosition || this.defaultSmokePosition();
+    this.cigarette.position.copy(this.screenPoint(smokePosition.x, smokePosition.y, 1.3));
+    if (!this.reduced && !this.pointer?.smoke) this.cigarette.position.y += lift * .15;
     this.cigarette.rotation.y = -.5 - hold; this.cigarette.rotation.z = .32;
-    this.cigarette.scale.setScalar(small ? .68 : .82);
+    const smokeUnit = Math.abs(this.screenPoint(.5, 0, 1.3).y - this.screenPoint(.5, 1, 1.3).y) / height;
+    this.cigarette.scale.setScalar(Math.min(height * .44, width * .27) * smokeUnit / 2);
     const length = 1.45 * (1 - c.used) + .03;
     this.paper.scale.x = length; this.paper.position.x = .51 - length / 2;
     const tip = .51 - length;
@@ -264,22 +295,27 @@ class ImmersiveScene {
         this.addSmoke(position, new THREE.Vector3(-.08, .26, -.12), false);
       }
     }
-    this.tickParticles(dt); this.renderer.render(this.scene, this.camera);
+    this.measureCigarette(); this.tickParticles(dt); this.renderer.render(this.scene, this.camera);
   }
   renderFallback(now) {
     const width = this.host.clientWidth, height = this.host.clientHeight, ratio = Math.min(devicePixelRatio || 1, 1.5);
     if (!width || !height) return;
     if (this.canvas.width !== Math.round(width * ratio) || this.canvas.height !== Math.round(height * ratio)) { this.canvas.width = Math.round(width * ratio); this.canvas.height = Math.round(height * ratio); }
     const ctx = this.ctx; ctx.setTransform(ratio, 0, 0, ratio, 0, 0); ctx.clearRect(0, 0, width, height);
-    const cx = width * .46, cy = height * .43, scale = Math.min(width / 470, height / 390);
+    const small = width / height < 1, cx = width * (small ? .36 : .40), cy = height * (small ? .36 : .42), scale = Math.min(width / 470, height / 390);
     const gradient = ctx.createRadialGradient(cx, cy, 10, cx, cy, width * .65); gradient.addColorStop(0, '#eaf0df80'); gradient.addColorStop(1, '#f7f8f400'); ctx.fillStyle = gradient; ctx.fillRect(0, 0, width, height);
     const biteAge = (now - this.lastChew) / 500; const bite = biteAge > 0 && biteAge < 1 ? Math.sin(biteAge * Math.PI) : 0;
     if (this.state.nut) {
       ctx.save(); ctx.translate(cx, cy); ctx.scale(1, .4 + Math.abs(Math.cos(this.pitch)) * .6);
-      this.flat.nut(ctx, 0, 0, this.state.nut, scale * 1.35 * this.zoom, bite, this.yaw); ctx.restore();
+      this.flat.nut(ctx, 0, 0, this.state.nut, Math.min(height * .49, width * .48) / 180 * this.zoom, bite, this.yaw); ctx.restore();
     }
-    const c = this.state.cigarette, cigX = width * .69, cigY = height * .65;
-    ctx.save(); ctx.translate(cigX, cigY); ctx.rotate(.25); ctx.scale(scale, scale);
+    const c = this.state.cigarette, position = this.smokePosition || this.defaultSmokePosition(), cigX = width * position.x, cigY = height * position.y;
+    const smokeScale = Math.min(height * .44, width * .27) / 142;
+    const corners = [];
+    for (const x of [-100 + c.used * 95, 42]) for (const y of [-6, 7]) corners.push({ x: cigX + (x * Math.cos(.25) - y * Math.sin(.25)) * smokeScale, y: cigY + (x * Math.sin(.25) + y * Math.cos(.25)) * smokeScale });
+    const left = Math.min(...corners.map(p => p.x)), top = Math.min(...corners.map(p => p.y));
+    this.publishSmokeBounds({ x: left, y: top, width: Math.max(...corners.map(p => p.x)) - left, height: Math.max(...corners.map(p => p.y)) - top });
+    ctx.save(); ctx.translate(cigX, cigY); ctx.rotate(.25); ctx.scale(smokeScale, smokeScale);
     ctx.fillStyle = '#e6e3d5'; ctx.fillRect(-100 + c.used * 95, -6, 105 - c.used * 95, 13); ctx.fillStyle = '#cda372'; ctx.fillRect(5, -6, 37, 13);
     if (c.lit) { ctx.fillStyle = '#ed9251'; ctx.shadowBlur = 12; ctx.shadowColor = '#ff9e4f'; ctx.fillRect(-100 + c.used * 95, -6, 4, 13); }
     ctx.restore();
