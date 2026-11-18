@@ -1,0 +1,37 @@
+#account-dialog [hidden]{display:none!important}
+.account-button{border:1px solid #dce5d0;border-radius:9px;background:#edf3e4;color:#50683c;padding:9px 13px;font-size:11px;max-width:230px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#account-dialog{width:min(670px,calc(100% - 28px));max-height:calc(100dvh - 32px);padding:30px;border:1px solid #e0e7d7;border-radius:22px;color:#34432f;background:#fbfcf8;box-shadow:0 24px 100px #293d2830;overflow:auto}
+#account-dialog::backdrop{background:#26321e55;backdrop-filter:blur(5px)}
+.account-heading{display:flex;align-items:flex-start;gap:20px;justify-content:space-between;margin-bottom:24px}
+.account-heading .eyebrow{font-size:9px;letter-spacing:2px}
+.account-heading h2{font-size:23px;font-weight:600;margin:8px 0}
+.account-heading p{font-size:12px;line-height:1.8;color:#819070;overflow-wrap:anywhere}
+#account-close{font-size:23px;background:#edf1e6;border-radius:50%;width:32px;height:32px;flex-shrink:0;color:#7a886a}
+.auth-tabs{display:flex;gap:6px;border-bottom:1px solid #e2e8da;margin-bottom:20px;padding-bottom:10px}
+.auth-tabs button{background:transparent;border-radius:7px;padding:9px 21px;color:#89977b}
+.auth-tabs button[aria-pressed=true]{background:#e9f0df;color:#4c6338}
+#account-form label{display:block;font-size:12px;color:#667755;margin-bottom:16px}
+#account-form input{display:block;box-sizing:border-box;width:100%;border:1px solid #dce5d0;background:white;border-radius:9px;padding:12px;margin-top:8px;font:14px "Segoe UI",sans-serif;color:#34432f}
+#account-form input:focus{outline:2px solid #9db781;outline-offset:2px}
+#account-form small{display:block;font-size:10px;color:#8a967e;margin-top:6px}
+#account-submit{width:100%;padding:13px;background:#617d45;color:white;border-radius:9px;margin-top:7px}
+.account-note{font-size:11px;line-height:1.9;color:#829175;margin-top:17px}
+#connection-note{color:#94763d;background:#faf3e4;padding:10px 12px;border-radius:8px}
+.account-error{font-size:12px;line-height:1.8;color:#a35947;margin:12px 0;min-height:0}
+.account-toolbar{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 0 15px}
+.account-toolbar span{font-size:10px;color:#7e906c;line-height:1.8;flex:1}
+.account-toolbar button{background:#edf2e5;border:1px solid #dfe7d2;border-radius:7px;padding:8px 11px;color:#6e8158;font-size:10px;white-space:nowrap}
+.stats-label{font-size:12px;display:flex;align-items:center;gap:12px;margin:22px 0 12px;font-weight:500}
+.stats-label small{font-size:9px;font-weight:400;color:#95a188}
+.stats-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.stats-grid>div{background:white;border:1px solid #e4eadc;border-radius:12px;padding:17px 12px}
+.stats-grid strong{display:block;font:29px Georgia,serif;color:#607b43;overflow-wrap:anywhere}
+.stats-grid span{display:block;font-size:10px;color:#8c997d;margin-top:8px}
+.stats-grid.total>div{background:#f0f5e8}
+.stats-table-wrap{overflow:auto;border:1px solid #e3e9dc;border-radius:11px}
+.stats-table{border-collapse:collapse;width:100%;text-align:right;font-size:11px}
+.stats-table th{font-size:10px;color:#869876;background:#f1f5ea;font-weight:400}
+.stats-table th,.stats-table td{padding:11px 13px;border-bottom:1px solid #e8eddf;white-space:nowrap}
+.stats-table th:first-child,.stats-table td:first-child{text-align:left}
+.stats-table tr:last-child td{border-bottom:0}
+@media(max-width:760px){.header-actions{gap:8px}.account-button{max-width:160px;font-size:10px;padding:8px 10px}.header-actions .offline-label{display:none}#account-dialog{padding:22px 17px}.account-heading h2{font-size:20px}.stats-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.stats-grid>div{padding:12px}.stats-grid strong{font-size:26px}.stats-table th,.stats-table td{padding:10px 7px}.account-toolbar{flex-wrap:wrap}}

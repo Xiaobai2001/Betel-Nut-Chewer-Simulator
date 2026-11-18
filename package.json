@@ -1,7 +1,7 @@
 {
   "name": "chew-simulator",
-  "version": "1.1.1",
-  "description": "An offline visual simulator with quitting reminders",
+  "version": "1.2.0",
+  "description": "A visual simulator with optional MySQL-backed accounts and quitting reminders",
   "main": "desktop/main.cjs",
   "author": "Chew Simulator",
   "license": "UNLICENSED",
@@ -19,7 +19,10 @@
     "serve": "node tools/serve.cjs",
     "test": "node --test tests/*.test.cjs",
     "build:win": "electron-builder --win portable --x64",
-    "build:android": "python tools/build_android.py"
+    "build:android": "python tools/build_android.py",
+    "prepare:accounts": "node tools/build_scene.cjs && python tools/prepare_publish.py --accounts",
+    "start:server": "node server/index.cjs",
+    "test:accounts": "node tests/accounts.cjs"
   },
   "devDependencies": {
     "electron": "38.8.6",

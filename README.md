@@ -2,7 +2,7 @@
 
 一个可离线运行的中文视觉模拟器，包含咀嚼形变、吐渣和吐出、三档虚拟包装、吸吐烟动画，以及戒槟榔、戒烟提醒。全屏模式采用明亮奶油白界面，支持三维旋转和缩放。
 
-当前应用版本：**1.1.1**。Windows：Electron 便携 EXE；Android：原生 WebView APK；网页：静态 HTML/CSS/JavaScript。
+当前网页版本：**1.2.0**，支持访客自行注册、登录和 MySQL 统计，全屏操作在底部。账号后台使用 Node.js 24 + MySQL 8.0。已有 Windows EXE / Android APK 仍为 **1.1.1 离线版**，没有账号或 OTA。
 
 > 当前 EXE / APK 尚未实现 OTA。服务器下载页提供手动下载，发布目录和校验文件不等于已经具备自动更新。
 
@@ -13,13 +13,16 @@
 - 安装包：[GitHub Releases](https://github.com/Xiaobai2001/Betel-Nut-Chewer-Simulator/releases)。安装包放在 Releases，不提交到源码仓库。
 - 操作方式与快捷键：[使用说明](docs/usage.md)。
 
-当前先上线网页版：在开发电脑运行 `npm.cmd run prepare:web`，将 `成品/网页服务器部署/` 中的 `ChewSimulator-1.1.1-WebServer.zip` 上传到 Windows Server，按[仅网页版部署步骤](docs/windows-web.md)操作。这个小包不需要构建 EXE / APK，服务器无需 Node.js 或数据库。
+当前发布账号网页版：在开发电脑运行 `npm.cmd run prepare:accounts`，将 `成品/账号网页版部署/ChewSimulator-1.2.0-WebAccounts.zip` 上传到 Windows Server，按[账号与 MySQL 部署步骤](docs/accounts-server.md)操作。默认使用新端口 8081，保留原 IIS 8080 网站。不要仅复制 HTML 到 IIS，账号功能需要运行后台。
+
+仍可运行 `npm.cmd run prepare:web` 导出纯静态 IIS 包，或双击 HTML 使用访客模式；这两种方式没有账号后台。
 
 ## 目录
 
 ```text
 Betel-Nut-Chewer-Simulator/
 ├── app/                        三端共用的网页运行文件
+├── server/                     账号 API、MySQL 建表与密码工具
 ├── src/                        三维场景源码
 ├── desktop/                    Electron 桌面入口
 ├── android/                    Android 源码、清单、资源
@@ -31,11 +34,12 @@ Betel-Nut-Chewer-Simulator/
 ├── package.json
 ├── package-lock.json
 ├── requirements-build.txt
-├── .private/                   本机签名；不进入 Git 或发布包
+├── .private/                   本机签名、数据库连接配置；不进入 Git 或发布包
 ├── .build/                     SDK、编译结果、截图、备份；不进入 Git
 ├── node_modules/               开发依赖；不进入 Git
 └── 成品/                       自动生成；不进入 Git
-    ├── 网页服务器部署/          当前阶段：仅网页的 IIS 部署 ZIP
+    ├── 账号网页版部署/          当前 1.2.0：Node + MySQL 部署 ZIP
+    ├── 网页服务器部署/          纯静态 IIS 部署 ZIP（访客模式）
     ├── 本机运行/
     ├── 云服务器部署/
     │   ├── site/               IIS 唯一公开的网站根目录
@@ -57,7 +61,7 @@ npm.cmd test
 npm.cmd run serve
 ```
 
-访问 `http://127.0.0.1:4173/`；Ctrl+C 停止。开发服务器只监听本机，云端使用 IIS。
+访问 `http://127.0.0.1:4173/`；Ctrl+C 停止。开发服务器只监听本机、仅提供访客模拟。账号云端使用 Node 后台；配置和启动见账号部署文档。
 
 ## 构建和整理发布文件
 
@@ -81,7 +85,8 @@ EXE / APK 在 `.build/releases/`。重新生成发布包时，旧发布目录会
 
 ## 发布
 
-- 无域名和 HTTPS 的 Windows Server：[IIS 部署指南](docs/windows-server.md)。默认端口 8080，由用户在服务器上操作。
+- 当前账号网页版：[Node + MySQL 部署与自动启动](docs/accounts-server.md)。数据库管理密码由服务器安装时输入，不进 GitHub。
+- 旧静态版 Windows Server：[IIS 部署指南](docs/windows-server.md)。默认端口 8080，由用户在服务器上操作。
 - GitHub：[源码与安装包发布](docs/github.md)。
 - 后续自动更新：[OTA 接入方案](docs/ota.md)。
 - 验证范围：[验证记录](docs/validation.md)。Android 尚未在实体手机验收；IIS 脚本只在开发电脑做语法及部署包检查，未在服务器实际运行。

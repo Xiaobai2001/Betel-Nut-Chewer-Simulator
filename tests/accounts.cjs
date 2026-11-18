@@ -1,0 +1,85 @@
+const assert = require('node:assert/strict');
+const crypto = require('node:crypto');
+const mysql = require('../server/node_modules/mysql2/promise');
+const { createPool, initializeSchema, recordEvents, getStats, dayInChina } = require('../server/store.cjs');
+const { createApp } = require('../server/app.cjs');
+const { verifyPassword } = require('../server/security.cjs');
+(async () => {
+  if (!process.env.TEST_MYSQL_PORT) throw new Error('Explicit TEST_MYSQL_PORT required; use an isolated MySQL instance.');
+  const config = { host: '127.0.0.1', port: Number(process.env.TEST_MYSQL_PORT), user: 'root', password: process.env.TEST_MYSQL_PASSWORD || '' };
+  const admin = await mysql.createConnection(config);
+  const database = 'chew_test_' + process.pid + '_' + Date.now();
+  assert.match(database, /^chew_test_[0-9_]+$/);
+  await admin.query('CREATE DATABASE ' + mysql.escapeId(database));
+  let pool = createPool({ ...config, database }), server;
+  const origin = 'http://127.0.0.1:4180';
+  const start = async () => {
+    const app = await createApp(pool, { publicOrigin: origin, allowRegistration: true });
+    server = await new Promise(resolve => { const s = app.listen(4180, '127.0.0.1', () => resolve(s)); });
+  };
+  const stop = () => new Promise(resolve => server.close(resolve));
+  const request = async (url, body, cookie, expected = 200, headers = {}) => {
+    const response = await fetch(origin + '/api/' + url, { method: body === undefined ? 'GET' : 'POST', headers: { Origin: origin, ...(body === undefined ? {} : { 'Content-Type': 'application/json' }), ...(cookie ? { Cookie: cookie } : {}), ...headers }, body: body === undefined ? undefined : JSON.stringify(body) });
+    const result = await response.json(); assert.equal(response.status, expected, JSON.stringify(result));
+    return { data: result, cookie: response.headers.get('set-cookie')?.split(';')[0], response };
+  };
+  try {
+    await initializeSchema(pool); await start();
+    assert.equal((await request('health')).data.ok, true);
+    await request('stats', undefined, null, 401);
+    const a = await request('register', { username: 'Alice', password: 'example-password-a', displayName: '测试甲' }, null, 201);
+    const uid = a.data.user.id; assert.equal(a.data.user.username, 'alice');
+    assert.match(a.response.headers.get('set-cookie'), /HttpOnly/); assert.match(a.response.headers.get('set-cookie'), /SameSite=Strict/);
+    const [[stored]] = await pool.query('SELECT password_hash FROM chew_users WHERE id=?', [uid]);
+    assert.notEqual(stored.password_hash, 'example-password-a'); assert.equal(await verifyPassword('example-password-a', stored.password_hash), true);
+    await request('register', { username: 'ALICE', password: 'another-password' }, null, 409);
+    await request('login', { username: 'alice', password: 'wrong-password' }, null, 401);
+    const b = await request('register', { username: 'Bob', password: 'example-password-b' }, null, 201);
+    const runId = crypto.randomUUID();
+    const types = [...Array(5).fill('chew'), 'discard', 'take', ...Array(15).fill('chew')];
+    const batch = { accountId: uid, runId, events: types.map((type, i) => ({ seq: i + 1, type })) };
+    await Promise.all([request('events', batch, a.cookie), request('events', batch, a.cookie)]);
+    let stats = (await request('stats', undefined, a.cookie)).data;
+    assert.equal(stats.total.bites, 20); assert.equal(stats.total.nuts_started, 2); assert.equal(stats.total.nuts_completed, 1); assert.equal(stats.total.discarded, 1);
+    assert.equal(stats.daily.length, 7); assert.equal(stats.today.bites, 20);
+    await request('events', batch, b.cookie, 403);
+    await request('events', { ...batch, accountId: b.data.user.id }, b.cookie, 403);
+    assert.equal((await request('stats', undefined, b.cookie)).data.total.bites, 0);
+    const badRun = crypto.randomUUID();
+    await request('events', { accountId: uid, runId: badRun, events: [{ seq: 1, type: 'chew' }, { seq: 2, type: 'take' }] }, a.cookie, 409);
+    await request('events', { accountId: uid, runId: badRun, events: [{ seq: 2, type: 'chew' }] }, a.cookie, 409);
+    await request('events', { accountId: uid, runId: badRun, events: [{ seq: 1, type: 'chew' }] }, a.cookie);
+    assert.equal((await request('stats', undefined, a.cookie)).data.total.bites, 21);
+    await request('events', batch, a.cookie, 403, { Origin: 'https://foreign.example' });
+    await request('session', undefined, a.cookie, 403, { 'Sec-Fetch-Site': 'cross-site' });
+    await request('events', { accountId: uid, runId, events: [] }, a.cookie, 400);
+    for (const name of ['/.private/server.json', '/server/schema.sql', '/server/package.json', '/%2e%2e/server/app.cjs']) assert.equal((await fetch(origin + name)).status, 404);
+    assert.equal(dayInChina(new Date('2026-01-01T15:59:59Z')), '2026-01-01');
+    assert.equal(dayInChina(new Date('2026-01-01T16:00:00Z')), '2026-01-02');
+    await recordEvents(pool, b.data.user.id, { runId: crypto.randomUUID(), events: [{ seq: 1, type: 'chew' }] }, new Date('2026-01-01T16:00:00Z'));
+    const dated = await getStats(pool, b.data.user.id, new Date('2026-01-01T16:00:01Z'));
+    assert.equal(dated.today.bites, 1); assert.equal(dated.today.day, '2026-01-02');
+    console.log('PASS: registration, salted hashes, session cookies, isolation, duplicate/concurrent replay, rollback, date boundary, CSRF, private file isolation');
+    await stop(); await pool.end(); pool = createPool({ ...config, database }); await start();
+    assert.equal((await request('stats', undefined, a.cookie)).data.total.bites, 21);
+    await request('logout', { accountId: b.data.user.id }, a.cookie, 403);
+    await request('logout', { accountId: uid }, a.cookie);
+    await request('stats', undefined, a.cookie, 401);
+    const login = await request('login', { username: 'ALICE', password: 'example-password-a' });
+    assert.equal(login.data.user.id, uid);
+    await pool.query('UPDATE chew_sessions SET expires_at=DATE_SUB(UTC_TIMESTAMP(),INTERVAL 1 DAY) WHERE user_id=?', [uid]);
+    await request('stats', undefined, login.cookie, 401);
+    for (let i = 0; i < 14; i++) await request('login', { username: 'alice', password: 'wrong-password' }, null, 401);
+    await request('login', { username: 'alice', password: 'wrong-password' }, null, 429);
+    console.log('PASS: database survives backend restart, logout/expiry revoke sessions, login throttling');
+    if (process.argv.includes('--browser')) {
+      await stop(); await start();
+      await require('./accounts-browser.cjs')(origin, pool);
+    }
+  } finally {
+    if (server?.listening) await stop();
+    await pool.end();
+    await admin.query('DROP DATABASE ' + mysql.escapeId(database));
+    await admin.end();
+  }
+})().catch(error => { console.error(error); process.exitCode = 1; });

@@ -1,0 +1,9 @@
+{
+  "name": "chew-simulator-server",
+  "version": "1.2.0",
+  "private": true,
+  "description": "Account and statistics service for Chew Simulator",
+  "engines": { "node": ">=24" },
+  "scripts": { "start": "node index.cjs", "setup": "node setup.cjs" },
+  "dependencies": { "express": "5.3.0", "mysql2": "3.24.6" }
+}

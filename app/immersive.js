@@ -75,6 +75,7 @@
       document.querySelectorAll('[data-immersive-pack]').forEach(button => button.setAttribute('aria-pressed', String(Number(button.dataset.immersivePack) === this.state.pack)));
     }
     keydown(event) {
+      if ($('account-dialog')?.open) return;
       if (event.key === 'Tab' && this.active) {
         const focusable = [...this.dialog.querySelectorAll('button:not(:disabled),input:not(:disabled),canvas[tabindex]')].filter(el => el.getClientRects().length);
         const first = focusable[0], last = focusable[focusable.length - 1];

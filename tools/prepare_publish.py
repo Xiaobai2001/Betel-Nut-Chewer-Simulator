@@ -12,7 +12,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-SOURCE_DIRS = ('app', 'src', 'desktop', 'android', 'tools', 'tests', 'docs', 'deploy', '.github')
+SOURCE_DIRS = ('app', 'src', 'server', 'desktop', 'android', 'tools', 'tests', 'docs', 'deploy', '.github')
 SOURCE_FILES = ('README.md', '.gitignore', '.gitattributes', 'package.json', 'package-lock.json', 'requirements-build.txt', '打开网页版.html')
 FORBIDDEN_PARTS = {'.git', '.private', '.build', 'node_modules', 'signing', 'android-signing', '__pycache__'}
 FORBIDDEN_SUFFIXES = {'.jks', '.keystore', '.p12', '.pfx', '.pem', '.key', '.pyc', '.exe', '.apk', '.zip'}
@@ -55,7 +55,7 @@ def write_zip(folder: Path, target: Path, prefix: str = '') -> None:
 def install_output(stage: Path, name: str) -> Path:
     delivery = (ROOT / '成品').resolve()
     target = delivery / name
-    if name not in {'云服务器部署', 'GitHub发布', '网页服务器部署'} or target.parent != delivery or target.is_symlink():
+    if name not in {'云服务器部署', 'GitHub发布', '网页服务器部署', '账号网页版部署'} or target.parent != delivery or target.is_symlink():
         raise RuntimeError('Unexpected publication directory')
     if target.exists():
         backup = ROOT / '.build/backups/publication' / (datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%S%fZ') + '-' + name)
@@ -86,12 +86,13 @@ def write_manifest(site: Path, version: str) -> None:
 def write_delivery_index() -> None:
     (ROOT / '成品/README.md').write_text('''# 交付文件导航
 
-- `网页服务器部署/`：当前先上线网页版，上传其中的 WebServer.zip 并按 README 操作；不包含 EXE / APK。
+- `账号网页版部署/`：当前 1.2.0，使用 Node.js + MySQL，上传 WebAccounts.zip 并按 README 操作；支持注册和统计。
+- `网页服务器部署/`：纯静态 IIS 包，仅访客模拟，不运行账号后台。
 - `本机运行/`：本机双击的 EXE、安卓 APK 和离线网页版。
 - `云服务器部署/`：包含网页和客户端安装包下载的完整部署包，留待后续使用。
 - `GitHub发布/`：源码 ZIP 与 release-assets/ 安装包。源码提交到 Git，安装包放在 GitHub Releases。
 
-只有部署包内的 site/ 是 IIS 网站根目录。服务器由用户自行部署；生成部署包不代表已经在公网运行。当前客户端还没有 OTA。
+账号版由 Node 只公开 app/，不要把整个安装目录设为 IIS 根目录。旧静态包只公开 site/。服务器由用户自行部署；生成部署包不代表已经在公网运行。旧 EXE / APK 仍为 1.1.1，没有账号和 OTA。
 ''', encoding='utf-8')
 
 def main() -> None:
@@ -99,6 +100,7 @@ def main() -> None:
     modes = parser.add_mutually_exclusive_group()
     modes.add_argument('--check-source', action='store_true')
     modes.add_argument('--web-only', action='store_true', help='Export a small IIS package without requiring EXE/APK builds')
+    modes.add_argument('--accounts', action='store_true', help='Export the Node/MySQL web server without EXE/APK')
     args = parser.parse_args()
     files = source_files()
     print(f'Source allowlist passed: {len(files)} files; private keys, caches and binaries excluded.')
@@ -110,6 +112,31 @@ def main() -> None:
     build = ROOT / '.build'
     build.mkdir(exist_ok=True)
     stage = Path(tempfile.mkdtemp(prefix='publish-', dir=build))
+    if args.accounts:
+        delivery = stage / 'accounts'
+        delivery.mkdir()
+        for source in files:
+            relative = source.relative_to(ROOT)
+            if relative.parts[0] in {'app', 'server'}:
+                destination = delivery / relative
+                destination.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(source, destination)
+        for name in ['Install-Accounts.ps1', 'Reset-Password.ps1']:
+            shutil.copy2(ROOT / 'deploy/windows-server' / name, delivery / name)
+        (delivery / 'docs').mkdir()
+        shutil.copy2(ROOT / 'docs/accounts-server.md', delivery / 'README.md')
+        shutil.copy2(ROOT / 'docs/accounts-server.md', delivery / 'docs/accounts-server.md')
+        write_manifest(delivery / 'app', version)
+        archive = stage / f'ChewSimulator-{version}-WebAccounts.zip'
+        write_zip(delivery, archive)
+        shutil.copy2(archive, delivery / archive.name)
+        (delivery / (archive.name + '.sha256')).write_text(sha256(archive) + '  ' + archive.name + '\n', encoding='utf-8')
+        with zipfile.ZipFile(delivery / f'ChewSimulator-{version}-Source.zip', 'w', zipfile.ZIP_DEFLATED) as source_zip:
+            for source in files:
+                source_zip.write(source, 'Betel-Nut-Chewer-Simulator/' + source.relative_to(ROOT).as_posix())
+        print(f'Prepared: {install_output(delivery, "账号网页版部署").relative_to(ROOT)} ({archive.stat().st_size:,} byte ZIP)')
+        write_delivery_index()
+        return
     if args.web_only:
         server = stage / 'server'
         site = prepare_site(server, 'windows-web.md')

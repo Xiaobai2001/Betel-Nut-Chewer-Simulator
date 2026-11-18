@@ -11,10 +11,12 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="stylesheet" href="styles.css">
   <link rel="stylesheet" href="immersive.css">
+  <link rel="stylesheet" href="account.css">
   <script src="model.js" defer></script>
   <script src="visuals.js" defer></script>
   <script src="immersive-scene.js" defer></script>
   <script src="immersive.js" defer></script>
+  <script src="account.js" defer></script>
   <script src="app.js" defer></script>
 </head>
 <body>
@@ -43,11 +45,11 @@
       <button class="nav-item" data-page="guide"><svg><use href="#i-info"/></svg>使用说明</button>
     </nav>
     <div class="sidebar-note"><span class="mini-leaf">✳</span><h3>好奇留在这里，<br>健康留给自己。</h3><p>一次虚拟体验，<br>也是一次放下的机会。</p><button class="text-link" data-open-pause>休息一小会 <svg><use href="#i-arrow"/></svg></button></div>
-    <div class="sidebar-footer"><span class="online-dot"></span>纯模拟 · 无真实消费<small>LOCAL & PRIVATE　 /　 V1.1.1</small></div>
+    <div class="sidebar-footer"><span class="online-dot"></span>纯模拟 · 无真实消费<small>VIRTUAL EXPERIENCE　 /　 V1.2.0</small></div>
   </aside>
 
   <main>
-    <header class="topbar"><div class="breadcrumb">你的模拟空间 <span>/</span> <strong id="page-label">模拟体验</strong></div><div class="header-actions"><span class="offline-label"><span class="online-dot"></span>离线可用</span><button id="sound-toggle" class="icon-button" title="开启音效" aria-label="开启音效" aria-pressed="false"><svg><use href="#i-mute"/></svg></button></div></header>
+    <header class="topbar"><div class="breadcrumb">你的模拟空间 <span>/</span> <strong id="page-label">模拟体验</strong></div><div class="header-actions"><span id="cloud-status" class="offline-label">访客体验</span><button id="account-open" class="account-button">登录 / 注册</button><button id="sound-toggle" class="icon-button" title="开启音效" aria-label="开启音效" aria-pressed="false"><svg><use href="#i-mute"/></svg></button></div></header>
     <section id="experience" class="page active-page">
       <div class="page-heading"><div><div class="eyebrow">A LITTLE CURIOSITY. A HEALTHIER CHOICE.</div><h1>嚼槟榔模拟器<span class="version-tag">互动体验</span></h1><p>在屏幕里体验，现实里少一点。让每一次好奇，都有更轻松的出口。</p></div><span class="heading-decoration" aria-hidden="true">✳</span></div>
       <div class="health-banner"><span class="health-icon"><svg><use href="#i-heart"/></svg></span><p><strong>模拟就好，健康更重要。</strong><span>槟榔具有致癌风险，吸烟同样危害健康。价格不代表安全，建议戒槟榔、戒烟。</span></p><button data-open-pause>试试放下 <svg><use href="#i-arrow"/></svg></button></div>
@@ -83,7 +85,7 @@
 
     <section id="guide" class="page">
       <div class="page-heading"><div><div class="eyebrow">A SMALL GUIDE TO YOUR VIRTUAL SPACE.</div><h1>把体验留在屏幕里。</h1><p>所有动作都是视觉模拟，没有真实购买，也没有联网账号。</p></div></div>
-      <div class="guide-grid"><article class="card"><span class="tip-number">01 / 咀嚼</span><h2>看见每一口的变化</h2><p>点击“嚼一口”，或在模拟页面按空格。也可以开启自动咀嚼。每一口都会压扁槟榔、加深颜色并增加纤维，15 口后完全纤维化并自动停止。</p><p>“吐渣”清除碎纤维；“吐出槟榔”移除整颗，再点击“取一颗”继续。离开模拟页面时会暂停自动咀嚼。</p></article><article class="card"><span class="tip-number">02 / 包装</span><h2>三种外观，一样的提醒</h2><p>50、100、200 是虚拟档位，分别对应青椰绿、秋山金、夜岩黑。切换包装后，新包有 8 颗，口中已有的槟榔会保留。</p><p>价格和包装不代表安全性。本模拟不代表任何真实品牌，没有商品链接或支付功能。</p></article><article class="card"><span class="tip-number">03 / 烟雾</span><h2>点燃、吸入、吐出</h2><p>可以独立“点一根”，无需嘴里有槟榔。抽完或熄灭后可以再点一根。点燃后选择“吸一口”，再“吐烟”，烟雾会扩散消失；香烟会随时间和吸入逐渐变短。</p><p>可随时点击“熄灭”。槟榔与烟草并用会增加健康风险，不建议在现实中模仿。</p></article><article class="card"><span class="tip-number">04 / 本地</span><h2>离线，也能用</h2><p>网页版可直接打开 index.html；Windows 版双击 EXE；安卓版安装 APK 后打开。核心功能无需网络，不请求相机、麦克风或定位权限。</p><p>会话计数关闭后重置，只在本机保存音效偏好。音效默认关闭。手机上用按钮即可操作。</p></article></div>
+      <div class="guide-grid"><article class="card"><span class="tip-number">01 / 咀嚼</span><h2>看见每一口的变化</h2><p>点击“嚼一口”，或在模拟页面按空格。也可以开启自动咀嚼。每一口都会压扁槟榔、加深颜色并增加纤维，15 口后完全纤维化并自动停止。</p><p>“吐渣”清除碎纤维；“吐出槟榔”移除整颗，再点击“取一颗”继续。离开模拟页面时会暂停自动咀嚼。</p></article><article class="card"><span class="tip-number">02 / 包装</span><h2>三种外观，一样的提醒</h2><p>50、100、200 是虚拟档位，分别对应青椰绿、秋山金、夜岩黑。切换包装后，新包有 8 颗，口中已有的槟榔会保留。</p><p>价格和包装不代表安全性。本模拟不代表任何真实品牌，没有商品链接或支付功能。</p></article><article class="card"><span class="tip-number">03 / 烟雾</span><h2>点燃、吸入、吐出</h2><p>可以独立“点一根”，无需嘴里有槟榔。抽完或熄灭后可以再点一根。点燃后选择“吸一口”，再“吐烟”，烟雾会扩散消失；香烟会随时间和吸入逐渐变短。</p><p>可随时点击“熄灭”。槟榔与烟草并用会增加健康风险，不建议在现实中模仿。</p></article><article class="card"><span class="tip-number">04 / 本地</span><h2>离线，也能用</h2><p>网页版可直接打开 index.html；Windows 版双击 EXE；安卓版安装 APK 后打开。核心功能无需网络，不请求相机、麦克风或定位权限。</p><p>访客会话计数关闭后重置。账号网页版支持自行注册，登录后统计保存到服务器，断网操作暂存在本机；离线 EXE / APK 暂不支持账号。音效默认关闭。</p></article></div>
       <article class="keyboard-guide card"><h2>全屏沉浸 · 把这一刻放大</h2><p>点击咀嚼区右上角“全屏沉浸”，进入明亮奶油白的第一人称画面，全屏不再显示嘴巴和牙齿。槟榔和香烟在同一场景中，鼠标或手指拖动旋转，滚轮或滑块缩放。吐渣会从视角前方向外飞出、下落，吐出的整颗还会弹跳；残渣保留在地面，可一键清理。</p><div class="keyboard-chips"><span><kbd>F</kbd>进入 / 退出沉浸</span><span><kbd>Space</kbd>嚼 / 取一颗</span><span><kbd>Q</kbd>吐渣</span><span><kbd>G</kbd>吐出整颗</span><span><kbd>L</kbd>点 / 再点一根</span><span><kbd>I</kbd>吸一口</span><span><kbd>O</kbd>吐烟</span><span><kbd>X</kbd>熄灭</span><span><kbd>A</kbd>自动咀嚼</span><span><kbd>1 / 2 / 3</kbd>50 / 100 / 200 换包</span><span><kbd>R</kbd>旋转与缩放复位</span><span><kbd>方向键</kbd>旋转微调</span><span><kbd>Esc</kbd>退出沉浸</span></div><p>快捷键在模拟页面有效，输入框与滑块获得焦点时不接管输入。手机使用屏幕按钮。不支持系统全屏的浏览器会铺满当前页面；不支持 WebGL 的设备使用兼容画面。图形均为虚拟示意。</p></article>
       <article class="source-note card"><svg><use href="#i-info"/></svg><div><h2>关于健康提醒</h2><p>世界卫生组织国际癌症研究机构（IARC）已将槟榔列为对人类致癌的物质；不含烟草的槟榔同样存在风险。烟草使用也具有明确健康危害。最安全的选择是不用槟榔、不吸烟。</p><small>参考：IARC Monographs, Volume 85（Betel-quid and Areca-nut Chewing），WHO Tobacco fact sheet。动画是示意，不模拟真实生理反应。</small></div></article>
     </section>
@@ -107,6 +109,35 @@
     <footer class="immersive-footer"><span><svg><use href="#i-heart"/></svg>模拟就好。槟榔致癌，吸烟有害，建议戒除。</span><button id="immersive-rest">放下，呼吸一分钟 <svg><use href="#i-arrow"/></svg></button></footer>
     <div id="immersive-message" role="status" aria-live="polite"></div>
   </section>
+<dialog id="account-dialog" aria-labelledby="account-title">
+    <header class="account-heading"><div><div class="eyebrow">A SMALL RECORD / A HEALTHIER CHOICE</div><h2 id="account-title">留下一份自己的记录</h2><p id="account-subtitle">登录后，模拟记录可在不同设备间查看。</p></div><button id="account-close" aria-label="关闭账号窗口">×</button></header>
+    <div id="account-auth">
+      <div class="auth-tabs"><button data-auth-mode="login" aria-pressed="true">登录</button><button id="account-register-tab" data-auth-mode="register" aria-pressed="false">注册账号</button></div>
+      <form id="account-form">
+        <label>账号<input id="account-username" name="username" autocomplete="username" pattern="[A-Za-z0-9_]{3,24}" minlength="3" maxlength="24" required placeholder="设置一个容易记住的账号"><small>3–24 位字母、数字或下划线，不区分大小写</small></label>
+        <label>密码<input id="account-password" name="password" type="password" autocomplete="current-password" minlength="8" maxlength="128" required placeholder="至少 8 位，建议使用独立密码"></label>
+        <div id="register-fields" hidden><label>确认密码<input id="account-confirm" type="password" autocomplete="new-password" minlength="8" maxlength="128"></label><label>昵称（选填）<input id="account-nickname" autocomplete="nickname" maxlength="24" placeholder="希望怎么称呼你"></label></div>
+        <p id="auth-error" class="account-error" role="status"></p>
+        <button id="account-submit" type="submit">登录</button>
+      </form>
+      <p class="account-note">访客可直接体验。登录后从新的模拟开始，之前的访客记录不计入账号。本站保存账号、昵称和模拟统计；不收集手机号。忘记密码请联系网站维护者。</p>
+    </div>
+    <div id="account-stats" hidden>
+      <div class="account-toolbar"><span id="stats-sync" role="status">正在读取记录…</span><button id="stats-refresh">同步并刷新</button><button id="account-logout">退出登录</button></div>
+      <p id="stats-error" class="account-error" role="status"></p>
+      <div id="stats-content" hidden>
+        <h3 class="stats-label">今日记录 <small>北京时间</small></h3>
+        <div class="stats-grid"><div><strong id="stats-today-bites">0</strong><span>咀嚼次数</span></div><div><strong id="stats-today-nuts_started">0</strong><span>开始嚼的颗数</span></div><div><strong id="stats-today-nuts_completed">0</strong><span>嚼完的颗数</span></div><div><strong id="stats-today-discarded">0</strong><span>吐出的颗数</span></div></div>
+        <h3 class="stats-label">累计记录 <small>仅当前账号</small></h3>
+        <div class="stats-grid total"><div><strong id="stats-total-bites">0</strong><span>咀嚼次数</span></div><div><strong id="stats-total-nuts_started">0</strong><span>开始嚼的颗数</span></div><div><strong id="stats-total-nuts_completed">0</strong><span>嚼完的颗数</span></div><div><strong id="stats-total-discarded">0</strong><span>吐出的颗数</span></div></div>
+        <h3 class="stats-label">近 7 天 <small>虚拟体验记录</small></h3>
+        <div class="stats-table-wrap"><table class="stats-table"><thead><tr><th>日期</th><th>咀嚼次数</th><th>开始颗数</th><th>完成颗数</th></tr></thead><tbody id="stats-days"></tbody></table></div>
+      </div>
+      <p class="account-note">第一口记为开始 1 颗，形态达到 100% 记为嚼完 1 颗。刷新页面会重置当前模拟，已同步统计保留。断网记录补传时计入服务器收到当天；未同步前请勿清除浏览器数据。</p>
+    </div>
+    <p id="connection-note" class="account-note" hidden>当前连接未加密，请使用专用测试密码，勿与其他网站共用。</p>
+    <p class="account-note">数字仅用于记录虚拟操作，不代表真实使用。槟榔致癌，吸烟有害健康，建议戒除。</p>
+  </dialog>
   <div id="toast" role="status" aria-live="polite"></div>
 </body>
 </html>

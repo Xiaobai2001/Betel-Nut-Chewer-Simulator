@@ -3,7 +3,7 @@
   const $ = id => document.getElementById(id);
   const state = new Simulator();
   const visuals = new SimulatorVisuals($('chew-canvas'), $('smoke-canvas'), state);
-  let immersive = null;
+  let immersive = null; let account = null;
   let currentPage = 'experience'; let autoTimer = null; let toastTimer = null;
   let breathTimer = null; let breathStart = 0; let breathPhase = -1;
   let sound = false; let audio = null; let background = false;
@@ -62,13 +62,14 @@
   }
   function chew() {
     if (state.chew()) {
+      account?.record('chew');
       visuals.chew(); immersive?.scene?.chew(); playSound('chew');
       if (state.nut.wear === 100) { stopAuto(); toast('这颗已经完全纤维化，吐出后休息一下吧。'); }
       render();
     }
   }
   function primaryAction() {
-    if (!state.nut) { if (!state.remaining) state.changePack(state.pack); state.take(); visuals.take(); render(); }
+    if (!state.nut) { if (!state.remaining) { state.changePack(state.pack); account?.record('pack', state.pack); } if (state.take()) account?.record('take'); visuals.take(); render(); }
     else chew();
   }
   $('chew-button').addEventListener('click', primaryAction);
@@ -76,9 +77,9 @@
     if (event.target.checked && state.nut && state.nut.wear < 100) { stopAuto(); $('auto-chew').checked = true; chew(); if (state.nut.wear < 100) autoTimer = setInterval(chew, 760); }
     else stopAuto();
   });
-  $('spit-fibers').addEventListener('click', () => { if (state.spitFibers()) { visuals.spit(false, state.nut); immersive?.scene?.spit(false, state.nut); playSound('spit'); render(); toast(immersive?.active ? '碎渣已向前吐出，落在地面上。' : '碎渣已吐入虚拟收集盘。'); } });
-  $('spit-nut').addEventListener('click', () => { const nut = state.nut; if (state.spitNut()) { stopAuto(); visuals.spit(true, nut); immersive?.scene?.spit(true, nut); playSound('spit'); render(); toast('已吐出槟榔。要不要喝口水，歇一会？'); } });
-  function changePack(value) { if (state.changePack(value)) { render(); toast(`已换成 ${value} 档虚拟包装，内含 8 颗。${state.nut ? '口中这颗保留。' : ''}`); } }
+  $('spit-fibers').addEventListener('click', () => { if (state.spitFibers()) { account?.record('spit'); visuals.spit(false, state.nut); immersive?.scene?.spit(false, state.nut); playSound('spit'); render(); toast(immersive?.active ? '碎渣已向前吐出，落在地面上。' : '碎渣已吐入虚拟收集盘。'); } });
+  $('spit-nut').addEventListener('click', () => { const nut = state.nut; if (state.spitNut()) { account?.record('discard'); stopAuto(); visuals.spit(true, nut); immersive?.scene?.spit(true, nut); playSound('spit'); render(); toast('已吐出槟榔。要不要喝口水，歇一会？'); } });
+  function changePack(value) { if (state.changePack(value)) { account?.record('pack', value); render(); toast(`已换成 ${value} 档虚拟包装，内含 8 颗。${state.nut ? '口中这颗保留。' : ''}`); } }
   document.querySelectorAll('[data-pack]').forEach(button => button.addEventListener('click', () => changePack(Number(button.dataset.pack))));
   $('refill-pack').addEventListener('click', () => changePack(state.pack));
   $('light-cigarette').addEventListener('click', () => { if (state.light()) { render(); toast('仅在屏幕里模拟。现实中建议戒槟榔、戒烟。'); } });
@@ -127,7 +128,7 @@
     $('breath-seconds').textContent = `还剩 ${Math.ceil(60 - elapsed)} 秒 · 第 ${Math.floor(elapsed / 10) + 1} / 6 轮`;
   }
   $('start-breath').addEventListener('click', () => {
-    stopAuto(); state.putDown(); render(); breathStart = performance.now(); breathPhase = -1;
+    stopAuto(); state.putDown(); account?.record('putDown'); render(); breathStart = performance.now(); breathPhase = -1;
     $('start-breath').hidden = true; $('start-breath').style.display = 'none'; $('stop-breath').hidden = false;
     updateBreath(); breathTimer = setInterval(updateBreath, 200);
   });
@@ -148,5 +149,10 @@
     requestAnimationFrame(animate);
   }
   if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) navigator.serviceWorker.register('./sw.js').catch(() => {});
+  account = new AccountController({
+    warn: toast,
+    pause: () => { stopAuto(); render(); },
+    reset: () => { stopAuto(); stopBreath(false); Object.assign(state, new Simulator()); immersive?.scene?.clearFloor(); render(); }
+  });
   updateSound(); render(); requestAnimationFrame(animate);
 })();
